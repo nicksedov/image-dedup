@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Dedup - Duplicate Image Manager</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        
+        .stat {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px 20px;
+            border-radius: 5px;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5a6fd6;
+        }
+        
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #219a52;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .input-group label {
+            font-weight: 500;
+        }
+        
+        .input-group input {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            min-width: 300px;
+        }
+        
+        .duplicate-group {
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+        
+        .group-header {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .group-title {
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .group-meta {
+            font-size: 0.9rem;
+            color: #888;
+        }
+        
+        .group-content {
+            display: flex;
+            padding: 20px;
+            gap: 30px;
+        }
+        
+        .thumbnail-container {
+            flex-shrink: 0;
+        }
+        
+        .thumbnail {
+            width: 128px;
+            height: 128px;
+            object-fit: contain;
+            border-radius: 8px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+        }
+        
+        .files-list {
+            flex-grow: 1;
+        }
+        
+        .file-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            background: #f8f9fa;
+            transition: background 0.2s ease;
+        }
+        
+        .file-item:hover {
+            background: #e9ecef;
+        }
+        
+        .file-item.selected {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+        }
+        
+        .file-checkbox {
+            margin-right: 15px;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .file-info {
+            flex-grow: 1;
+        }
+        
+        .file-name {
+            font-weight: 600;
+            color: #333;
+            word-break: break-all;
+        }
+        
+        .file-path {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 4px;
+            word-break: break-all;
+        }
+        
+        .file-meta {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 4px;
+        }
+        
+        .no-duplicates {
+            background: white;
+            padding: 60px 20px;
+            text-align: center;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .no-duplicates h2 {
+            color: #27ae60;
+            margin-bottom: 10px;
+        }
+        
+        .scanned-dirs {
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+        
+        .scanned-dirs code {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin: 0 5px;
+        }
+        
+        .selected-count {
+            padding: 10px 20px;
+            background: #fff3cd;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+        }
+        
+        .modal-header {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        
+        .modal-body {
+            margin-bottom: 20px;
+        }
+        
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Image Dedup</h1>
+            <p>Manage duplicate images in your media library</p>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value">{{.TotalGroups}}</div>
+                    <div class="stat-label">Duplicate Groups</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">{{.TotalFiles}}</div>
+                    <div class="stat-label">Total Duplicate Files</div>
+                </div>
+            </div>
+            <div class="scanned-dirs">
+                Scanned directories: 
+                {{range .ScannedDirs}}
+                <code>{{.}}</code>
+                {{end}}
+            </div>
+        </header>
+
+        <div id="alert-container"></div>
+
+        <div class="controls">
+            <form action="/scan" method="POST" style="display: inline;">
+                <button type="submit" class="btn btn-primary">Rescan Directories</button>
+            </form>
+            <button class="btn btn-secondary" onclick="resetAllCheckboxes()">Reset Selection</button>
+            <button class="btn btn-success" onclick="openGenerateModal()">Generate Removal Script</button>
+            <div class="selected-count" id="selected-count">0 files selected</div>
+        </div>
+
+        {{if .Groups}}
+        {{range .Groups}}
+        <div class="duplicate-group">
+            <div class="group-header">
+                <span class="group-title">Group #{{.Index}}</span>
+                <span class="group-meta">{{len .Files}} files | {{.SizeHuman}} each | MD5: {{.Hash}}</span>
+            </div>
+            <div class="group-content">
+                <div class="thumbnail-container">
+                    {{if .Thumbnail}}
+                    <img src="{{.Thumbnail}}" alt="Thumbnail" class="thumbnail">
+                    {{else}}
+                    <div class="thumbnail" style="display: flex; align-items: center; justify-content: center; color: #999;">No preview</div>
+                    {{end}}
+                </div>
+                <div class="files-list">
+                    {{range .Files}}
+                    <div class="file-item" id="file-{{.ID}}">
+                        <input type="checkbox" class="file-checkbox" 
+                               data-path="{{.Path}}" 
+                               data-id="{{.ID}}"
+                               onchange="updateSelection()">
+                        <div class="file-info">
+                            <div class="file-name">{{.FileName}}</div>
+                            <div class="file-path">{{.DirPath}}</div>
+                            <div class="file-meta">Modified: {{.ModTime}}</div>
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+        {{end}}
+        {{else}}
+        <div class="no-duplicates">
+            <h2>No Duplicates Found</h2>
+            <p>Your media library appears to be clean, or you need to run a scan first.</p>
+        </div>
+        {{end}}
+    </div>
+
+    <!-- Generate Script Modal -->
+    <div class="modal" id="generate-modal">
+        <div class="modal-content">
+            <div class="modal-header">Generate Removal Script</div>
+            <div class="modal-body">
+                <div class="input-group" style="flex-direction: column; align-items: stretch;">
+                    <label for="output-dir">Output directory for script:</label>
+                    <input type="text" id="output-dir" placeholder="/path/to/output" style="margin-top: 8px; width: 100%;">
+                    
+                    <label for="trash-dir" style="margin-top: 15px;">Trash directory (where files will be moved):</label>
+                    <input type="text" id="trash-dir" placeholder="/path/to/trash (optional)" style="margin-top: 8px; width: 100%;">
+                </div>
+                <p style="margin-top: 15px; color: #666; font-size: 0.9rem;">
+                    The script will move selected files to the trash directory.
+                    Review the script before running it.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeGenerateModal()">Cancel</button>
+                <button class="btn btn-success" onclick="generateScript()">Generate Script</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function getSelectedFiles() {
+            const checkboxes = document.querySelectorAll('.file-checkbox:checked');
+            return Array.from(checkboxes).map(cb => cb.dataset.path);
+        }
+
+        function updateSelection() {
+            const selected = getSelectedFiles();
+            document.getElementById('selected-count').textContent = `${selected.length} files selected`;
+            
+            // Update visual state
+            document.querySelectorAll('.file-item').forEach(item => {
+                const checkbox = item.querySelector('.file-checkbox');
+                if (checkbox.checked) {
+                    item.classList.add('selected');
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+        }
+
+        function resetAllCheckboxes() {
+            document.querySelectorAll('.file-checkbox').forEach(cb => {
+                cb.checked = false;
+            });
+            updateSelection();
+        }
+
+        function openGenerateModal() {
+            const selected = getSelectedFiles();
+            if (selected.length === 0) {
+                showAlert('Please select at least one file to remove.', 'error');
+                return;
+            }
+            document.getElementById('generate-modal').classList.add('active');
+        }
+
+        function closeGenerateModal() {
+            document.getElementById('generate-modal').classList.remove('active');
+        }
+
+        async function generateScript() {
+            const outputDir = document.getElementById('output-dir').value.trim();
+            const trashDir = document.getElementById('trash-dir').value.trim();
+            const filePaths = getSelectedFiles();
+
+            if (!outputDir) {
+                showAlert('Please specify an output directory for the script.', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/generate-script', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        filePaths: filePaths,
+                        outputDir: outputDir,
+                        trashDir: trashDir
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    closeGenerateModal();
+                    showAlert(`Script generated successfully! Saved to: ${result.scriptPath}`, 'success');
+                } else {
+                    showAlert(`Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showAlert(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        function showAlert(message, type) {
+            const container = document.getElementById('alert-container');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            container.innerHTML = '';
+            container.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        // Close modal on outside click
+        document.getElementById('generate-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeGenerateModal();
+            }
+        });
+    </script>
+</body>
+</html>
