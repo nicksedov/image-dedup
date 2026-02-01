@@ -65,6 +65,14 @@ func calculateFileHash(path string) (string, error) {
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
+// fileInfo holds file information collected during directory walk
+type fileInfo struct {
+	path           string
+	normalizedPath string
+	size           int64
+	modTime        time.Time
+}
+
 // scanDirectory scans a directory for image files and updates the database
 func scanDirectory(db *gorm.DB, dirPath string, progressChan chan<- string) error {
 	absPath, err := filepath.Abs(dirPath)
@@ -72,7 +80,84 @@ func scanDirectory(db *gorm.DB, dirPath string, progressChan chan<- string) erro
 		return fmt.Errorf("failed to get absolute path: %w", err)
 	}
 
-	return filepath.Walk(absPath, func(path string, info os.FileInfo, err error) error {
+	const batchSize = 20
+	var batch []fileInfo
+
+	// Process a batch of files
+	processBatch := func(batch []fileInfo) {
+		if len(batch) == 0 {
+			return
+		}
+
+		// Collect all normalized paths for batch query
+		paths := make([]string, len(batch))
+		pathToInfo := make(map[string]fileInfo)
+		for i, fi := range batch {
+			paths[i] = fi.normalizedPath
+			pathToInfo[fi.normalizedPath] = fi
+		}
+
+		// Batch query: get all existing files in one query
+		var existingFiles []ImageFile
+		db.Where("path IN ?", paths).Find(&existingFiles)
+
+		// Create map of existing files by path
+		existingMap := make(map[string]ImageFile)
+		for _, ef := range existingFiles {
+			existingMap[ef.Path] = ef
+		}
+
+		// Process each file in batch
+		var toCreate []ImageFile
+		var toUpdate []ImageFile
+
+		for _, fi := range batch {
+			existing, exists := existingMap[fi.normalizedPath]
+
+			if exists {
+				// File exists in DB, check if it's been modified
+				if existing.ModTime.Equal(fi.modTime) && existing.Size == fi.size {
+					progressChan <- fmt.Sprintf("Skipping (cached): %s", fi.path)
+					continue
+				}
+			}
+
+			progressChan <- fmt.Sprintf("Processing: %s", fi.path)
+
+			// Calculate hash
+			hash, err := calculateFileHash(fi.path)
+			if err != nil {
+				progressChan <- fmt.Sprintf("Error hashing %s: %v", fi.path, err)
+				continue
+			}
+
+			imageFile := ImageFile{
+				Path:    fi.normalizedPath,
+				Size:    fi.size,
+				Hash:    hash,
+				ModTime: fi.modTime,
+			}
+
+			if exists {
+				imageFile.ID = existing.ID
+				toUpdate = append(toUpdate, imageFile)
+			} else {
+				toCreate = append(toCreate, imageFile)
+			}
+		}
+
+		// Batch create new files
+		if len(toCreate) > 0 {
+			db.Create(&toCreate)
+		}
+
+		// Update existing files (need to do one by one for proper ID handling)
+		for _, f := range toUpdate {
+			db.Save(&f)
+		}
+	}
+
+	err = filepath.Walk(absPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			progressChan <- fmt.Sprintf("Error accessing %s: %v", path, err)
 			return nil // Continue walking
@@ -89,46 +174,28 @@ func scanDirectory(db *gorm.DB, dirPath string, progressChan chan<- string) erro
 		// Normalize path separators to forward slashes for consistency
 		normalizedPath := filepath.ToSlash(path)
 
-		// Check if file already exists in database with same mod time
-		var existing ImageFile
-		result := db.Where("path = ?", normalizedPath).First(&existing)
+		batch = append(batch, fileInfo{
+			path:           path,
+			normalizedPath: normalizedPath,
+			size:           info.Size(),
+			modTime:        info.ModTime(),
+		})
 
-		if result.Error == nil {
-			// File exists in DB, check if it's been modified
-			if existing.ModTime.Equal(info.ModTime()) && existing.Size == info.Size() {
-				progressChan <- fmt.Sprintf("Skipping (cached): %s", path)
-				return nil
-			}
-		}
-
-		progressChan <- fmt.Sprintf("Processing: %s", path)
-
-		// Calculate hash
-		hash, err := calculateFileHash(path)
-		if err != nil {
-			progressChan <- fmt.Sprintf("Error hashing %s: %v", path, err)
-			return nil
-		}
-
-		// Create or update record
-		imageFile := ImageFile{
-			Path:    normalizedPath,
-			Size:    info.Size(),
-			Hash:    hash,
-			ModTime: info.ModTime(),
-		}
-
-		if result.Error == nil {
-			// Update existing
-			imageFile.ID = existing.ID
-			db.Save(&imageFile)
-		} else {
-			// Create new
-			db.Create(&imageFile)
+		// Process batch when it reaches batchSize
+		if len(batch) >= batchSize {
+			processBatch(batch)
+			batch = batch[:0] // Reset batch
 		}
 
 		return nil
 	})
+
+	// Process remaining files in the last batch
+	if len(batch) > 0 {
+		processBatch(batch)
+	}
+
+	return err
 }
 
 // findDuplicates finds all duplicate groups from the database
