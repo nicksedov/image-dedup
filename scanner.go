@@ -73,6 +73,44 @@ type fileInfo struct {
 	modTime        time.Time
 }
 
+// progressBuffer accumulates progress messages for batch output
+type progressBuffer struct {
+	messages []string
+	limit    int
+	channel  chan<- string
+}
+
+func newProgressBuffer(ch chan<- string, limit int) *progressBuffer {
+	return &progressBuffer{
+		messages: make([]string, 0, limit),
+		limit:    limit,
+		channel:  ch,
+	}
+}
+
+func (pb *progressBuffer) add(msg string) {
+	pb.messages = append(pb.messages, msg)
+	if len(pb.messages) >= pb.limit {
+		pb.flush()
+	}
+}
+
+func (pb *progressBuffer) flush() {
+	if len(pb.messages) == 0 {
+		return
+	}
+	// Join all messages with newline and send as single message
+	var sb strings.Builder
+	for i, msg := range pb.messages {
+		if i > 0 {
+			sb.WriteByte('\n')
+		}
+		sb.WriteString(msg)
+	}
+	pb.channel <- sb.String()
+	pb.messages = pb.messages[:0]
+}
+
 // scanDirectory scans a directory for image files and updates the database
 func scanDirectory(db *gorm.DB, dirPath string, progressChan chan<- string) error {
 	absPath, err := filepath.Abs(dirPath)
@@ -80,8 +118,10 @@ func scanDirectory(db *gorm.DB, dirPath string, progressChan chan<- string) erro
 		return fmt.Errorf("failed to get absolute path: %w", err)
 	}
 
-	const batchSize = 20
+	const batchSize = 50
+	const progressBufferSize = 100
 	var batch []fileInfo
+	progress := newProgressBuffer(progressChan, progressBufferSize)
 
 	// Process a batch of files
 	processBatch := func(batch []fileInfo) {
@@ -117,17 +157,17 @@ func scanDirectory(db *gorm.DB, dirPath string, progressChan chan<- string) erro
 			if exists {
 				// File exists in DB, check if it's been modified
 				if existing.ModTime.Equal(fi.modTime) && existing.Size == fi.size {
-					progressChan <- fmt.Sprintf("Skipping (cached): %s", fi.path)
+					progress.add("Skipping (cached): " + fi.path)
 					continue
 				}
 			}
 
-			progressChan <- fmt.Sprintf("Processing: %s", fi.path)
+			progress.add("Processing: " + fi.path)
 
 			// Calculate hash
 			hash, err := calculateFileHash(fi.path)
 			if err != nil {
-				progressChan <- fmt.Sprintf("Error hashing %s: %v", fi.path, err)
+				progress.add("Error hashing " + fi.path + ": " + err.Error())
 				continue
 			}
 
@@ -155,11 +195,14 @@ func scanDirectory(db *gorm.DB, dirPath string, progressChan chan<- string) erro
 		for _, f := range toUpdate {
 			db.Save(&f)
 		}
+
+		// Flush progress after each batch
+		progress.flush()
 	}
 
 	err = filepath.Walk(absPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			progressChan <- fmt.Sprintf("Error accessing %s: %v", path, err)
+			progress.add("Error accessing " + path + ": " + err.Error())
 			return nil // Continue walking
 		}
 
@@ -194,6 +237,9 @@ func scanDirectory(db *gorm.DB, dirPath string, progressChan chan<- string) erro
 	if len(batch) > 0 {
 		processBatch(batch)
 	}
+
+	// Final flush of any remaining progress messages
+	progress.flush()
 
 	return err
 }
@@ -277,7 +323,8 @@ func countDuplicateGroups(db *gorm.DB) (int, error) {
 }
 
 // findDuplicatesPaginated finds duplicate groups with pagination (no file existence check)
-func findDuplicatesPaginated(db *gorm.DB, offset, limit int) ([]DuplicateGroup, int, error) {
+// Returns: groups for current page, total groups count, total files count, error
+func findDuplicatesPaginated(db *gorm.DB, offset, limit int) ([]DuplicateGroup, int, int, error) {
 	// Find hash+size combinations that appear more than once
 	type HashSizeCount struct {
 		Hash  string
@@ -295,14 +342,20 @@ func findDuplicatesPaginated(db *gorm.DB, offset, limit int) ([]DuplicateGroup, 
 		Scan(&allDuplicateHashSizes)
 
 	if result.Error != nil {
-		return nil, 0, result.Error
+		return nil, 0, 0, result.Error
 	}
 
-	totalCount := len(allDuplicateHashSizes)
+	totalGroups := len(allDuplicateHashSizes)
+
+	// Calculate total files across all groups
+	totalFiles := 0
+	for _, hs := range allDuplicateHashSizes {
+		totalFiles += int(hs.Count)
+	}
 
 	// Apply pagination to hash+size list
 	if offset >= len(allDuplicateHashSizes) {
-		return []DuplicateGroup{}, totalCount, nil
+		return []DuplicateGroup{}, totalGroups, totalFiles, nil
 	}
 
 	end := offset + limit
@@ -327,7 +380,7 @@ func findDuplicatesPaginated(db *gorm.DB, offset, limit int) ([]DuplicateGroup, 
 		}
 	}
 
-	return groups, totalCount, nil
+	return groups, totalGroups, totalFiles, nil
 }
 
 // cleanupMissingFiles removes database entries for files that no longer exist

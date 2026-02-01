@@ -36,6 +36,7 @@ func NewServer(db *gorm.DB, scanDirs []string) *Server {
 type TemplateData struct {
 	Groups       []DuplicateGroupView
 	TotalFiles   int
+	PageFiles    int
 	TotalGroups  int
 	ScannedDirs  []string
 	LastScanTime string
@@ -108,7 +109,7 @@ func (s *Server) handleIndex(c *gin.Context) {
 
 	// Fetch only the groups needed for this page
 	offset := (page - 1) * pageSize
-	groups, totalGroups, err := findDuplicatesPaginated(s.db, offset, pageSize)
+	groups, totalGroups, totalFiles, err := findDuplicatesPaginated(s.db, offset, pageSize)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed to find duplicates: %v", err)
 		return
@@ -125,11 +126,11 @@ func (s *Server) handleIndex(c *gin.Context) {
 
 	// Prepare group views with parallel thumbnail generation
 	groupViews := make([]DuplicateGroupView, len(groups))
-	totalFiles := 0
+	pageFiles := 0
 
-	// Count total files first (fast operation)
+	// Count files on current page
 	for _, g := range groups {
-		totalFiles += len(g.Files)
+		pageFiles += len(g.Files)
 	}
 
 	// Generate thumbnails in parallel (up to 16 workers)
@@ -179,6 +180,7 @@ func (s *Server) handleIndex(c *gin.Context) {
 	data := TemplateData{
 		Groups:       groupViews,
 		TotalFiles:   totalFiles,
+		PageFiles:    pageFiles,
 		TotalGroups:  totalGroups,
 		ScannedDirs:  s.scanDirs,
 		LastScanTime: time.Now().Format("2006-01-02 15:04:05"),
