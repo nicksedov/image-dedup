@@ -45,7 +45,7 @@ type DuplicateGroupView struct {
 	Size      int64
 	SizeHuman string
 	Files     []FileView
-	Thumbnail string
+	Thumbnail template.URL
 }
 
 // FileView represents a file for template rendering
@@ -111,7 +111,7 @@ func (s *Server) handleIndex(c *gin.Context) {
 			Size:      g.Size,
 			SizeHuman: formatSize(g.Size),
 			Files:     fileViews,
-			Thumbnail: thumbnail,
+			Thumbnail: template.URL(thumbnail),
 		})
 	}
 

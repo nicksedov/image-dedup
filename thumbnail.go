@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	maxThumbnailSize = 128
+	maxThumbnailSize = 192
 )
 
 // ThumbnailCache stores generated thumbnails in memory
