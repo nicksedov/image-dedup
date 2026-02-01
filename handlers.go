@@ -199,7 +199,7 @@ func (s *Server) handleIndex(c *gin.Context) {
 
 // handleScan triggers a new scan of directories
 func (s *Server) handleScan(c *gin.Context) {
-	progressChan := make(chan string, 100)
+	progressChan := make(chan string, 200)
 
 	go func() {
 		// First cleanup missing files
