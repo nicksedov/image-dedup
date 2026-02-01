@@ -345,12 +345,12 @@ func generateWindowsScript(filePaths []string, trashDir string) string {
 		baseName := filepath.Base(path)
 		escapedBaseName := strings.ReplaceAll(baseName, "'", "''")
 
-		sb.WriteString(fmt.Sprintf("try {\n"))
+		sb.WriteString("try {\n")
 		sb.WriteString(fmt.Sprintf("    Move-Item -Path '%s' -Destination (Join-Path $TrashDir '%s') -Force\n", escapedPath, escapedBaseName))
 		sb.WriteString(fmt.Sprintf("    Write-Host \"Moved: %s\" -ForegroundColor Green\n", baseName))
-		sb.WriteString(fmt.Sprintf("} catch {\n"))
+		sb.WriteString("} catch {\n")
 		sb.WriteString(fmt.Sprintf("    Write-Host \"Failed: %s - $_\" -ForegroundColor Red\n", baseName))
-		sb.WriteString(fmt.Sprintf("}\n\n"))
+		sb.WriteString("}\n\n")
 	}
 
 	sb.WriteString("Write-Host \"\"\n")
