@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/text/encoding/charmap"
 	"gorm.io/gorm"
 )
 
@@ -150,12 +151,13 @@ func (s *Server) handleScan(c *gin.Context) {
 
 // GenerateScriptRequest represents the request for script generation
 type GenerateScriptRequest struct {
-	FilePaths []string `json:"filePaths"`
-	OutputDir string   `json:"outputDir"`
-	TrashDir  string   `json:"trashDir"`
+	FilePaths  []string `json:"filePaths"`
+	OutputDir  string   `json:"outputDir"`
+	TrashDir   string   `json:"trashDir"`
+	ScriptType string   `json:"scriptType"` // "bash" or "windows"
 }
 
-// handleGenerateScript generates a bash script for moving files
+// handleGenerateScript generates a script for moving files
 func (s *Server) handleGenerateScript(c *gin.Context) {
 	var req GenerateScriptRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -177,20 +179,67 @@ func (s *Server) handleGenerateScript(c *gin.Context) {
 		req.TrashDir = filepath.Join(req.OutputDir, "trash")
 	}
 
-	// Generate bash script
+	if req.ScriptType == "" {
+		req.ScriptType = "bash"
+	}
+
+	var script string
+	var scriptPath string
+	var scriptBytes []byte
+
+	if req.ScriptType == "windows" {
+		// Convert paths to Windows format (backslashes)
+		windowsPaths := make([]string, len(req.FilePaths))
+		for i, p := range req.FilePaths {
+			windowsPaths[i] = strings.ReplaceAll(p, "/", "\\")
+		}
+		windowsTrashDir := strings.ReplaceAll(req.TrashDir, "/", "\\")
+
+		script = generateWindowsScript(windowsPaths, windowsTrashDir)
+		scriptPath = filepath.Join(req.OutputDir, "remove_duplicates.ps1")
+
+		// Encode script in Windows-1251
+		encoder := charmap.Windows1251.NewEncoder()
+		encoded, err := encoder.String(script)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to encode script: %v", err)})
+			return
+		}
+		scriptBytes = []byte(encoded)
+	} else {
+		script = generateBashScript(req.FilePaths, req.TrashDir)
+		scriptPath = filepath.Join(req.OutputDir, "remove_duplicates.sh")
+		scriptBytes = []byte(script)
+	}
+
+	// Save to file
+	if err := os.WriteFile(scriptPath, scriptBytes, 0755); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to save script: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "Script generated successfully",
+		"scriptPath": scriptPath,
+		"fileCount":  len(req.FilePaths),
+	})
+}
+
+// generateBashScript creates a bash script for Unix/Linux/macOS
+func generateBashScript(filePaths []string, trashDir string) string {
 	var sb strings.Builder
 	sb.WriteString("#!/bin/bash\n\n")
 	sb.WriteString("# Image Dedup - File Removal Script\n")
 	sb.WriteString(fmt.Sprintf("# Generated at: %s\n", time.Now().Format("2006-01-02 15:04:05")))
-	sb.WriteString(fmt.Sprintf("# Files to move: %d\n\n", len(req.FilePaths)))
+	sb.WriteString(fmt.Sprintf("# Files to move: %d\n\n", len(filePaths)))
 
 	// Create trash directory
 	sb.WriteString("# Create trash directory\n")
-	sb.WriteString(fmt.Sprintf("TRASH_DIR=\"%s\"\n", req.TrashDir))
+	sb.WriteString(fmt.Sprintf("TRASH_DIR=\"%s\"\n", trashDir))
 	sb.WriteString("mkdir -p \"$TRASH_DIR\"\n\n")
 
 	sb.WriteString("# Move files to trash\n")
-	for _, path := range req.FilePaths {
+	for _, path := range filePaths {
 		// Escape special characters in path
 		escapedPath := strings.ReplaceAll(path, "\"", "\\\"")
 		escapedPath = strings.ReplaceAll(escapedPath, "$", "\\$")
@@ -202,21 +251,45 @@ func (s *Server) handleGenerateScript(c *gin.Context) {
 	}
 
 	sb.WriteString("\necho \"Done! Moved files are in: $TRASH_DIR\"\n")
+	return sb.String()
+}
 
-	script := sb.String()
+// generateWindowsScript creates a PowerShell script for Windows
+func generateWindowsScript(filePaths []string, trashDir string) string {
+	var sb strings.Builder
+	sb.WriteString("# Image Dedup - File Removal Script (PowerShell)\n")
+	sb.WriteString(fmt.Sprintf("# Generated at: %s\n", time.Now().Format("2006-01-02 15:04:05")))
+	sb.WriteString(fmt.Sprintf("# Files to move: %d\n\n", len(filePaths)))
 
-	// Save to file
-	scriptPath := filepath.Join(req.OutputDir, "remove_duplicates.sh")
-	if err := os.WriteFile(scriptPath, []byte(script), 0755); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to save script: %v", err)})
-		return
+	// Create trash directory
+	sb.WriteString("# Create trash directory\n")
+	// Escape backslashes for PowerShell string
+	escapedTrashDir := strings.ReplaceAll(trashDir, "'", "''")
+	sb.WriteString(fmt.Sprintf("$TrashDir = '%s'\n", escapedTrashDir))
+	sb.WriteString("if (-not (Test-Path -Path $TrashDir)) {\n")
+	sb.WriteString("    New-Item -ItemType Directory -Path $TrashDir -Force | Out-Null\n")
+	sb.WriteString("}\n\n")
+
+	sb.WriteString("# Move files to trash\n")
+	for _, path := range filePaths {
+		// Escape single quotes for PowerShell
+		escapedPath := strings.ReplaceAll(path, "'", "''")
+		baseName := filepath.Base(path)
+		escapedBaseName := strings.ReplaceAll(baseName, "'", "''")
+
+		sb.WriteString(fmt.Sprintf("try {\n"))
+		sb.WriteString(fmt.Sprintf("    Move-Item -Path '%s' -Destination (Join-Path $TrashDir '%s') -Force\n", escapedPath, escapedBaseName))
+		sb.WriteString(fmt.Sprintf("    Write-Host \"Moved: %s\" -ForegroundColor Green\n", baseName))
+		sb.WriteString(fmt.Sprintf("} catch {\n"))
+		sb.WriteString(fmt.Sprintf("    Write-Host \"Failed: %s - $_\" -ForegroundColor Red\n", baseName))
+		sb.WriteString(fmt.Sprintf("}\n\n"))
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message":    "Script generated successfully",
-		"scriptPath": scriptPath,
-		"fileCount":  len(req.FilePaths),
-	})
+	sb.WriteString("Write-Host \"\"\n")
+	sb.WriteString("Write-Host \"Done! Moved files are in: $TrashDir\" -ForegroundColor Cyan\n")
+	sb.WriteString("Write-Host \"Press any key to exit...\"\n")
+	sb.WriteString("$null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')\n")
+	return sb.String()
 }
 
 // handleThumbnail serves a thumbnail for a specific file
