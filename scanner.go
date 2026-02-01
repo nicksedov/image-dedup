@@ -179,6 +179,90 @@ func findDuplicates(db *gorm.DB) ([]DuplicateGroup, error) {
 	return groups, nil
 }
 
+// countDuplicateGroups returns the total number of duplicate groups
+func countDuplicateGroups(db *gorm.DB) (int, error) {
+	var count int64
+	result := db.Model(&ImageFile{}).
+		Select("count(distinct hash || '-' || cast(size as text))").
+		Where("hash IN (SELECT hash FROM image_files GROUP BY hash, size HAVING count(*) > 1)").
+		Count(&count)
+
+	if result.Error != nil {
+		// Fallback to a simpler count
+		type HashSizeCount struct {
+			Hash  string
+			Size  int64
+			Count int64
+		}
+		var duplicates []HashSizeCount
+		result = db.Model(&ImageFile{}).
+			Select("hash, size, count(*) as count").
+			Group("hash, size").
+			Having("count(*) > 1").
+			Scan(&duplicates)
+		if result.Error != nil {
+			return 0, result.Error
+		}
+		return len(duplicates), nil
+	}
+
+	return int(count), nil
+}
+
+// findDuplicatesPaginated finds duplicate groups with pagination (no file existence check)
+func findDuplicatesPaginated(db *gorm.DB, offset, limit int) ([]DuplicateGroup, int, error) {
+	// Find hash+size combinations that appear more than once
+	type HashSizeCount struct {
+		Hash  string
+		Size  int64
+		Count int64
+	}
+
+	// Get all duplicate hash+size combinations
+	var allDuplicateHashSizes []HashSizeCount
+	result := db.Model(&ImageFile{}).
+		Select("hash, size, count(*) as count").
+		Group("hash, size").
+		Having("count(*) > 1").
+		Order("size DESC").
+		Scan(&allDuplicateHashSizes)
+
+	if result.Error != nil {
+		return nil, 0, result.Error
+	}
+
+	totalCount := len(allDuplicateHashSizes)
+
+	// Apply pagination to hash+size list
+	if offset >= len(allDuplicateHashSizes) {
+		return []DuplicateGroup{}, totalCount, nil
+	}
+
+	end := offset + limit
+	if end > len(allDuplicateHashSizes) {
+		end = len(allDuplicateHashSizes)
+	}
+
+	paginatedHashSizes := allDuplicateHashSizes[offset:end]
+
+	// Fetch files only for the paginated groups
+	var groups []DuplicateGroup
+	for _, hs := range paginatedHashSizes {
+		var files []ImageFile
+		db.Where("hash = ? AND size = ?", hs.Hash, hs.Size).Find(&files)
+
+		if len(files) > 1 {
+			groups = append(groups, DuplicateGroup{
+				Hash:  hs.Hash,
+				Size:  hs.Size,
+				Files: files,
+			})
+		}
+	}
+
+	return groups, totalCount, nil
+}
+
 // cleanupMissingFiles removes database entries for files that no longer exist
 func cleanupMissingFiles(db *gorm.DB, progressChan chan<- string) error {
 	var files []ImageFile

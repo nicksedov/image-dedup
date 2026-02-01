@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -105,50 +106,15 @@ func (s *Server) handleIndex(c *gin.Context) {
 		page = 1
 	}
 
-	groups, err := findDuplicates(s.db)
+	// Fetch only the groups needed for this page
+	offset := (page - 1) * pageSize
+	groups, totalGroups, err := findDuplicatesPaginated(s.db, offset, pageSize)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed to find duplicates: %v", err)
 		return
 	}
 
-	var allGroupViews []DuplicateGroupView
-	totalFiles := 0
-
-	for i, g := range groups {
-		var fileViews []FileView
-		var thumbnail string
-
-		for j, f := range g.Files {
-			// Generate thumbnail from the first valid file
-			if j == 0 {
-				thumb, err := generateThumbnail(f.Path, s.thumbnailCache)
-				if err == nil {
-					thumbnail = thumb
-				}
-			}
-
-			fileViews = append(fileViews, FileView{
-				ID:       f.ID,
-				Path:     f.Path,
-				FileName: filepath.Base(f.Path),
-				DirPath:  filepath.Dir(f.Path),
-				ModTime:  f.ModTime.Format("2006-01-02 15:04:05"),
-			})
-			totalFiles++
-		}
-
-		allGroupViews = append(allGroupViews, DuplicateGroupView{
-			Index:     i + 1,
-			Hash:      g.Hash,
-			Size:      g.Size,
-			SizeHuman: formatSize(g.Size),
-			Files:     fileViews,
-			Thumbnail: template.URL(thumbnail),
-		})
-	}
-
 	// Calculate pagination
-	totalGroups := len(allGroupViews)
 	totalPages := (totalGroups + pageSize - 1) / pageSize
 	if totalPages < 1 {
 		totalPages = 1
@@ -157,20 +123,61 @@ func (s *Server) handleIndex(c *gin.Context) {
 		page = totalPages
 	}
 
-	// Apply pagination
-	startIdx := (page - 1) * pageSize
-	endIdx := startIdx + pageSize
-	if endIdx > totalGroups {
-		endIdx = totalGroups
+	// Prepare group views with parallel thumbnail generation
+	groupViews := make([]DuplicateGroupView, len(groups))
+	totalFiles := 0
+
+	// Count total files first (fast operation)
+	for _, g := range groups {
+		totalFiles += len(g.Files)
 	}
 
-	var paginatedGroups []DuplicateGroupView
-	if startIdx < totalGroups {
-		paginatedGroups = allGroupViews[startIdx:endIdx]
+	// Generate thumbnails in parallel (up to 16 workers)
+	const maxWorkers = 16
+	var wg sync.WaitGroup
+	semaphore := make(chan struct{}, maxWorkers)
+
+	for i, g := range groups {
+		// Prepare file views (fast, no I/O)
+		fileViews := make([]FileView, len(g.Files))
+		for j, f := range g.Files {
+			fileViews[j] = FileView{
+				ID:       f.ID,
+				Path:     f.Path,
+				FileName: filepath.Base(f.Path),
+				DirPath:  filepath.Dir(f.Path),
+				ModTime:  f.ModTime.Format("2006-01-02 15:04:05"),
+			}
+		}
+
+		groupViews[i] = DuplicateGroupView{
+			Index:     offset + i + 1,
+			Hash:      g.Hash,
+			Size:      g.Size,
+			SizeHuman: formatSize(g.Size),
+			Files:     fileViews,
+		}
+
+		// Generate thumbnail in parallel
+		if len(g.Files) > 0 {
+			wg.Add(1)
+			go func(idx int, filePath string) {
+				defer wg.Done()
+				semaphore <- struct{}{}        // Acquire
+				defer func() { <-semaphore }() // Release
+
+				thumb, err := generateThumbnail(filePath, s.thumbnailCache)
+				if err == nil {
+					groupViews[idx].Thumbnail = template.URL(thumb)
+				}
+			}(i, g.Files[0].Path)
+		}
 	}
+
+	wg.Wait()
 
 	data := TemplateData{
-		Groups:       paginatedGroups,
+		Groups:       groupViews,
 		TotalFiles:   totalFiles,
 		TotalGroups:  totalGroups,
 		ScannedDirs:  s.scanDirs,
