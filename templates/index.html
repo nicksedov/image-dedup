@@ -334,6 +334,56 @@
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .pagination-btn {
+            padding: 10px 16px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+        
+        .pagination-btn:hover:not(:disabled) {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .pagination-info {
+            padding: 10px 16px;
+            font-size: 0.95rem;
+            color: #555;
+        }
+        
+        .page-size-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .page-size-selector select {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -368,6 +418,14 @@
             <button class="btn btn-secondary" onclick="resetAllCheckboxes()">Reset Selection</button>
             <button class="btn btn-success" onclick="openGenerateModal()">Generate Removal Script</button>
             <div class="selected-count" id="selected-count">0 files selected</div>
+            <div class="page-size-selector">
+                <label for="page-size">Groups per page:</label>
+                <select id="page-size" onchange="changePageSize(this.value)">
+                    {{range .PageSizes}}
+                    <option value="{{.}}" {{if eq . $.PageSize}}selected{{end}}>{{.}}</option>
+                    {{end}}
+                </select>
+            </div>
         </div>
 
         {{if .Groups}}
@@ -402,6 +460,16 @@
                     {{end}}
                 </div>
             </div>
+        </div>
+        {{end}}
+        
+        {{if gt .TotalPages 1}}
+        <div class="pagination">
+            <button class="pagination-btn" onclick="goToPage(1)" {{if not .HasPrevPage}}disabled{{end}}>&laquo; First</button>
+            <button class="pagination-btn" onclick="goToPage({{.PrevPage}})" {{if not .HasPrevPage}}disabled{{end}}>&lsaquo; Prev</button>
+            <span class="pagination-info">Page {{.CurrentPage}} of {{.TotalPages}}</span>
+            <button class="pagination-btn" onclick="goToPage({{.NextPage}})" {{if not .HasNextPage}}disabled{{end}}>Next &rsaquo;</button>
+            <button class="pagination-btn" onclick="goToPage({{.TotalPages}})" {{if not .HasNextPage}}disabled{{end}}>Last &raquo;</button>
         </div>
         {{end}}
         {{else}}
@@ -446,6 +514,19 @@
         function getSelectedFiles() {
             const checkboxes = document.querySelectorAll('.file-checkbox:checked');
             return Array.from(checkboxes).map(cb => cb.dataset.path);
+        }
+
+        function goToPage(page) {
+            const url = new URL(window.location);
+            url.searchParams.set('page', page);
+            window.location.href = url.toString();
+        }
+
+        function changePageSize(size) {
+            const url = new URL(window.location);
+            url.searchParams.set('pageSize', size);
+            url.searchParams.set('page', '1');
+            window.location.href = url.toString();
         }
 
         function updateSelection() {

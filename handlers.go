@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -37,6 +38,15 @@ type TemplateData struct {
 	TotalGroups  int
 	ScannedDirs  []string
 	LastScanTime string
+	// Pagination
+	CurrentPage  int
+	PageSize     int
+	TotalPages   int
+	HasPrevPage  bool
+	HasNextPage  bool
+	PrevPage     int
+	NextPage     int
+	PageSizes    []int
 }
 
 // DuplicateGroupView represents a duplicate group for template rendering
@@ -74,13 +84,34 @@ func formatSize(size int64) string {
 
 // handleIndex renders the main page
 func (s *Server) handleIndex(c *gin.Context) {
+	// Parse pagination parameters
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "50"))
+
+	// Validate page size
+	validPageSizes := []int{50, 100, 250, 500}
+	isValidPageSize := false
+	for _, ps := range validPageSizes {
+		if pageSize == ps {
+			isValidPageSize = true
+			break
+		}
+	}
+	if !isValidPageSize {
+		pageSize = 50
+	}
+
+	if page < 1 {
+		page = 1
+	}
+
 	groups, err := findDuplicates(s.db)
 	if err != nil {
 		c.String(http.StatusInternalServerError, "Failed to find duplicates: %v", err)
 		return
 	}
 
-	var groupViews []DuplicateGroupView
+	var allGroupViews []DuplicateGroupView
 	totalFiles := 0
 
 	for i, g := range groups {
@@ -106,7 +137,7 @@ func (s *Server) handleIndex(c *gin.Context) {
 			totalFiles++
 		}
 
-		groupViews = append(groupViews, DuplicateGroupView{
+		allGroupViews = append(allGroupViews, DuplicateGroupView{
 			Index:     i + 1,
 			Hash:      g.Hash,
 			Size:      g.Size,
@@ -116,12 +147,42 @@ func (s *Server) handleIndex(c *gin.Context) {
 		})
 	}
 
+	// Calculate pagination
+	totalGroups := len(allGroupViews)
+	totalPages := (totalGroups + pageSize - 1) / pageSize
+	if totalPages < 1 {
+		totalPages = 1
+	}
+	if page > totalPages {
+		page = totalPages
+	}
+
+	// Apply pagination
+	startIdx := (page - 1) * pageSize
+	endIdx := startIdx + pageSize
+	if endIdx > totalGroups {
+		endIdx = totalGroups
+	}
+
+	var paginatedGroups []DuplicateGroupView
+	if startIdx < totalGroups {
+		paginatedGroups = allGroupViews[startIdx:endIdx]
+	}
+
 	data := TemplateData{
-		Groups:       groupViews,
+		Groups:       paginatedGroups,
 		TotalFiles:   totalFiles,
-		TotalGroups:  len(groupViews),
+		TotalGroups:  totalGroups,
 		ScannedDirs:  s.scanDirs,
 		LastScanTime: time.Now().Format("2006-01-02 15:04:05"),
+		CurrentPage:  page,
+		PageSize:     pageSize,
+		TotalPages:   totalPages,
+		HasPrevPage:  page > 1,
+		HasNextPage:  page < totalPages,
+		PrevPage:     page - 1,
+		NextPage:     page + 1,
+		PageSizes:    validPageSizes,
 	}
 
 	c.HTML(http.StatusOK, "index.html", data)
