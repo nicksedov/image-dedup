@@ -421,6 +421,7 @@
             </form>
             <button class="btn btn-secondary" onclick="resetAllCheckboxes()">Reset Selection</button>
             <button class="btn btn-success" onclick="openGenerateModal()">Generate Removal Script</button>
+            <button class="btn btn-danger" onclick="openDeleteModal()">Delete Selected Files</button>
             <div class="selected-count" id="selected-count">0 files selected</div>
             <div class="page-size-selector">
                 <label for="page-size">Groups per page:</label>
@@ -510,6 +511,31 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeGenerateModal()">Cancel</button>
                 <button class="btn btn-success" onclick="generateScript()">Generate Script</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Files Modal -->
+    <div class="modal" id="delete-modal">
+        <div class="modal-content">
+            <div class="modal-header">Delete Selected Files</div>
+            <div class="modal-body">
+                <div class="input-group" style="flex-direction: column; align-items: stretch;">
+                    <p style="color: #e74c3c; font-weight: 500; margin-bottom: 15px;">
+                        Warning: This action will delete <span id="delete-count">0</span> file(s).
+                    </p>
+                    
+                    <label for="delete-trash-dir">Trash directory (optional):</label>
+                    <input type="text" id="delete-trash-dir" placeholder="C:\path\to\trash (leave empty to delete permanently)" style="margin-top: 8px; width: 100%;">
+                </div>
+                <p style="margin-top: 15px; color: #666; font-size: 0.9rem;">
+                    If a trash directory is specified, files will be moved there.
+                    Otherwise, files will be permanently deleted.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+                <button class="btn btn-danger" onclick="deleteFiles()">Delete Files</button>
             </div>
         </div>
     </div>
@@ -615,6 +641,70 @@
             }
         }
 
+        function openDeleteModal() {
+            const selected = getSelectedFiles();
+            if (selected.length === 0) {
+                showAlert('Please select at least one file to delete.', 'error');
+                return;
+            }
+            document.getElementById('delete-count').textContent = selected.length;
+            document.getElementById('delete-modal').classList.add('active');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('delete-modal').classList.remove('active');
+        }
+
+        async function deleteFiles() {
+            const trashDir = document.getElementById('delete-trash-dir').value.trim();
+            const filePaths = getSelectedFiles();
+
+            if (filePaths.length === 0) {
+                showAlert('No files selected.', 'error');
+                return;
+            }
+
+            // Confirm permanent deletion if no trash dir
+            if (!trashDir) {
+                if (!confirm('No trash directory specified. Files will be PERMANENTLY deleted. Continue?')) {
+                    return;
+                }
+            }
+
+            try {
+                const response = await fetch('/delete-files', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        filePaths: filePaths,
+                        trashDir: trashDir
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    closeDeleteModal();
+                    let message = `Successfully deleted ${result.success} file(s).`;
+                    if (result.failed > 0) {
+                        message += ` Failed: ${result.failed}.`;
+                    }
+                    showAlert(message, result.failed > 0 ? 'error' : 'success');
+                    
+                    // Reload page to refresh the list
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showAlert(`Error: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showAlert(`Error: ${error.message}`, 'error');
+            }
+        }
+
         function showAlert(message, type) {
             const container = document.getElementById('alert-container');
             const alert = document.createElement('div');
@@ -632,6 +722,12 @@
         document.getElementById('generate-modal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeGenerateModal();
+            }
+        });
+
+        document.getElementById('delete-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeDeleteModal();
             }
         });
     </script>

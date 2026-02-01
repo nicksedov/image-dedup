@@ -379,6 +379,88 @@ func (s *Server) handleThumbnail(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"thumbnail": thumbnail})
 }
 
+// DeleteFilesRequest represents the request for direct file deletion
+type DeleteFilesRequest struct {
+	FilePaths []string `json:"filePaths"`
+	TrashDir  string   `json:"trashDir"`
+}
+
+// DeleteFilesResponse represents the response from file deletion
+type DeleteFilesResponse struct {
+	Success     int      `json:"success"`
+	Failed      int      `json:"failed"`
+	FailedFiles []string `json:"failedFiles,omitempty"`
+}
+
+// handleDeleteFiles deletes selected files directly (moves to trash)
+func (s *Server) handleDeleteFiles(c *gin.Context) {
+	var req DeleteFilesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(req.FilePaths) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No files selected"})
+		return
+	}
+
+	var successCount, failedCount int
+	var failedFiles []string
+
+	// If trash directory is specified, move files there
+	if req.TrashDir != "" {
+		// Create trash directory if it doesn't exist
+		if err := os.MkdirAll(req.TrashDir, 0755); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create trash directory: " + err.Error()})
+			return
+		}
+
+		for _, filePath := range req.FilePaths {
+			baseName := filepath.Base(filePath)
+			destPath := filepath.Join(req.TrashDir, baseName)
+
+			// Handle duplicate names in trash by adding timestamp
+			if _, err := os.Stat(destPath); err == nil {
+				ext := filepath.Ext(baseName)
+				nameWithoutExt := strings.TrimSuffix(baseName, ext)
+				destPath = filepath.Join(req.TrashDir, nameWithoutExt+"_"+time.Now().Format("20060102_150405")+ext)
+			}
+
+			if err := os.Rename(filePath, destPath); err != nil {
+				failedCount++
+				failedFiles = append(failedFiles, baseName+": "+err.Error())
+				continue
+			}
+
+			// Remove from database
+			s.db.Where("path = ?", filepath.ToSlash(filePath)).Delete(&ImageFile{})
+			successCount++
+		}
+	} else {
+		// Permanently delete files
+		for _, filePath := range req.FilePaths {
+			baseName := filepath.Base(filePath)
+
+			if err := os.Remove(filePath); err != nil {
+				failedCount++
+				failedFiles = append(failedFiles, baseName+": "+err.Error())
+				continue
+			}
+
+			// Remove from database
+			s.db.Where("path = ?", filepath.ToSlash(filePath)).Delete(&ImageFile{})
+			successCount++
+		}
+	}
+
+	c.JSON(http.StatusOK, DeleteFilesResponse{
+		Success:     successCount,
+		Failed:      failedCount,
+		FailedFiles: failedFiles,
+	})
+}
+
 // SetupRouter sets up the Gin router with all routes
 func (s *Server) SetupRouter() *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
@@ -391,6 +473,7 @@ func (s *Server) SetupRouter() *gin.Engine {
 	r.GET("/", s.handleIndex)
 	r.POST("/scan", s.handleScan)
 	r.POST("/generate-script", s.handleGenerateScript)
+	r.POST("/delete-files", s.handleDeleteFiles)
 	r.GET("/thumbnail", s.handleThumbnail)
 
 	return r
