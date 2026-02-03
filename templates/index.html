@@ -384,6 +384,63 @@
             font-size: 0.95rem;
             cursor: pointer;
         }
+
+        .pattern-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border: 1px solid #e9ecef;
+        }
+
+        .pattern-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .pattern-stats {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .pattern-folders {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .folder-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .folder-option:hover {
+            border-color: #667eea;
+        }
+
+        .folder-option.selected {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .folder-option input[type="radio"] {
+            margin: 0;
+        }
+
+        .folder-path {
+            flex-grow: 1;
+            word-break: break-all;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
@@ -422,6 +479,7 @@
             <button class="btn btn-secondary" onclick="resetAllCheckboxes()">Reset Selection</button>
             <button class="btn btn-success" onclick="openGenerateModal()">Generate Removal Script</button>
             <button class="btn btn-danger" onclick="openDeleteModal()">Delete Selected Files</button>
+            <button class="btn btn-primary" onclick="openBatchModal()">Batch Deduplication</button>
             <div class="selected-count" id="selected-count">0 files selected</div>
             <div class="page-size-selector">
                 <label for="page-size">Groups per page:</label>
@@ -536,6 +594,30 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
                 <button class="btn btn-danger" onclick="deleteFiles()">Delete Files</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Batch Deduplication Modal -->
+    <div class="modal" id="batch-modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">Batch Deduplication</div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px; color: #666;">
+                    Select which folder should keep the file for each folder pattern. Files in other folders will be deleted.
+                </p>
+                <div id="batch-patterns-loading" style="text-align: center; padding: 20px;">
+                    Loading folder patterns...
+                </div>
+                <div id="batch-patterns-container" style="display: none; max-height: 400px; overflow-y: auto;"></div>
+                <div class="input-group" style="flex-direction: column; align-items: stretch; margin-top: 15px;">
+                    <label for="batch-trash-dir">Trash directory (optional):</label>
+                    <input type="text" id="batch-trash-dir" placeholder="C:\path\to\trash (leave empty to delete permanently)" style="margin-top: 8px; width: 100%;">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeBatchModal()">Cancel</button>
+                <button class="btn btn-danger" onclick="applyBatchRules()">Apply Rules</button>
             </div>
         </div>
     </div>
@@ -730,6 +812,161 @@
                 closeDeleteModal();
             }
         });
+
+        document.getElementById('batch-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeBatchModal();
+            }
+        });
+
+        // Batch deduplication functions
+        let currentPatterns = [];
+
+        async function openBatchModal() {
+            document.getElementById('batch-modal').classList.add('active');
+            document.getElementById('batch-patterns-loading').style.display = 'block';
+            document.getElementById('batch-patterns-container').style.display = 'none';
+
+            try {
+                const response = await fetch('/folder-patterns');
+                const data = await response.json();
+
+                if (response.ok) {
+                    currentPatterns = data.patterns;
+                    renderPatterns(data.patterns);
+                } else {
+                    showAlert('Error loading patterns: ' + data.error, 'error');
+                    closeBatchModal();
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'error');
+                closeBatchModal();
+            }
+        }
+
+        function closeBatchModal() {
+            document.getElementById('batch-modal').classList.remove('active');
+        }
+
+        function renderPatterns(patterns) {
+            const container = document.getElementById('batch-patterns-container');
+            
+            if (patterns.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666;">No folder patterns found.</p>';
+                document.getElementById('batch-patterns-loading').style.display = 'none';
+                container.style.display = 'block';
+                return;
+            }
+
+            let html = '';
+            for (const pattern of patterns) {
+                html += `
+                    <div class="pattern-item" data-pattern-id="${escapeHtml(pattern.id)}">
+                        <div class="pattern-header">
+                            <span class="pattern-stats">${pattern.duplicateCount} duplicate groups, ${pattern.totalFiles} files total</span>
+                        </div>
+                        <div class="pattern-folders">
+                `;
+
+                for (const folder of pattern.folders) {
+                    const radioId = `folder-${escapeHtml(pattern.id)}-${escapeHtml(folder)}`;
+                    html += `
+                        <label class="folder-option" for="${radioId}">
+                            <input type="radio" 
+                                   id="${radioId}" 
+                                   name="pattern-${escapeHtml(pattern.id)}" 
+                                   value="${escapeHtml(folder)}"
+                                   onchange="updateFolderSelection(this)">
+                            <span class="folder-path">${escapeHtml(folder)}</span>
+                        </label>
+                    `;
+                }
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+            document.getElementById('batch-patterns-loading').style.display = 'none';
+            container.style.display = 'block';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function updateFolderSelection(radio) {
+            // Update visual selection
+            const patternItem = radio.closest('.pattern-item');
+            patternItem.querySelectorAll('.folder-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            radio.closest('.folder-option').classList.add('selected');
+        }
+
+        async function applyBatchRules() {
+            const rules = [];
+            const trashDir = document.getElementById('batch-trash-dir').value.trim();
+
+            // Collect all selected rules
+            for (const pattern of currentPatterns) {
+                const selectedRadio = document.querySelector(`input[name="pattern-${CSS.escape(pattern.id)}"]:checked`);
+                if (selectedRadio) {
+                    rules.push({
+                        patternId: pattern.id,
+                        keepFolder: selectedRadio.value
+                    });
+                }
+            }
+
+            if (rules.length === 0) {
+                showAlert('Please select at least one folder to keep.', 'error');
+                return;
+            }
+
+            // Confirm action
+            const totalPatterns = rules.length;
+            if (!confirm(`This will apply ${totalPatterns} rule(s) to delete duplicate files. Continue?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/batch-delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        rules: rules,
+                        trashDir: trashDir
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    closeBatchModal();
+                    let message = `Successfully deleted ${result.success} file(s).`;
+                    if (result.failed > 0) {
+                        message += ` Failed: ${result.failed}.`;
+                    }
+                    showAlert(message, result.failed > 0 ? 'error' : 'success');
+                    
+                    // Reload page to refresh the list
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showAlert('Error: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'error');
+            }
+        }
     </script>
 </body>
 </html>

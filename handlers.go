@@ -461,6 +461,225 @@ func (s *Server) handleDeleteFiles(c *gin.Context) {
 	})
 }
 
+// FolderPattern represents a unique combination of folders containing duplicates
+type FolderPattern struct {
+	ID            string   `json:"id"`             // Hash of sorted folder paths
+	Folders       []string `json:"folders"`        // List of folder paths
+	DuplicateCount int     `json:"duplicateCount"` // Number of duplicate groups with this pattern
+	TotalFiles    int      `json:"totalFiles"`     // Total number of files across all groups
+}
+
+// FolderPatternsResponse represents the response for folder patterns
+type FolderPatternsResponse struct {
+	Patterns []FolderPattern `json:"patterns"`
+}
+
+// handleGetFolderPatterns returns all unique folder patterns from duplicates
+func (s *Server) handleGetFolderPatterns(c *gin.Context) {
+	groups, _, _, err := findDuplicatesPaginated(s.db, 0, 100000) // Get all groups
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find duplicates: " + err.Error()})
+		return
+	}
+
+	// Map to track patterns: patternID -> FolderPattern
+	patternMap := make(map[string]*FolderPattern)
+
+	for _, group := range groups {
+		// Extract unique folders for this group
+		folderSet := make(map[string]bool)
+		for _, file := range group.Files {
+			dir := filepath.Dir(file.Path)
+			folderSet[dir] = true
+		}
+
+		// Convert to sorted slice for consistent ID
+		folders := make([]string, 0, len(folderSet))
+		for folder := range folderSet {
+			folders = append(folders, folder)
+		}
+		
+		// Sort folders for consistent pattern ID
+		sortStrings(folders)
+
+		// Create pattern ID from sorted folders
+		patternID := createPatternID(folders)
+
+		if existing, ok := patternMap[patternID]; ok {
+			existing.DuplicateCount++
+			existing.TotalFiles += len(group.Files)
+		} else {
+			patternMap[patternID] = &FolderPattern{
+				ID:             patternID,
+				Folders:        folders,
+				DuplicateCount: 1,
+				TotalFiles:     len(group.Files),
+			}
+		}
+	}
+
+	// Convert map to slice
+	patterns := make([]FolderPattern, 0, len(patternMap))
+	for _, p := range patternMap {
+		patterns = append(patterns, *p)
+	}
+
+	// Sort patterns by duplicate count descending
+	sortPatternsByCount(patterns)
+
+	c.JSON(http.StatusOK, FolderPatternsResponse{Patterns: patterns})
+}
+
+// sortStrings sorts a slice of strings in place
+func sortStrings(s []string) {
+	for i := 0; i < len(s)-1; i++ {
+		for j := i + 1; j < len(s); j++ {
+			if s[i] > s[j] {
+				s[i], s[j] = s[j], s[i]
+			}
+		}
+	}
+}
+
+// sortPatternsByCount sorts patterns by duplicate count descending
+func sortPatternsByCount(patterns []FolderPattern) {
+	for i := 0; i < len(patterns)-1; i++ {
+		for j := i + 1; j < len(patterns); j++ {
+			if patterns[i].DuplicateCount < patterns[j].DuplicateCount {
+				patterns[i], patterns[j] = patterns[j], patterns[i]
+			}
+		}
+	}
+}
+
+// createPatternID creates a unique ID from sorted folder paths
+func createPatternID(folders []string) string {
+	return strings.Join(folders, "|")
+}
+
+// BatchDeleteRequest represents a request for batch deletion
+type BatchDeleteRequest struct {
+	Rules    []BatchDeleteRule `json:"rules"`
+	TrashDir string            `json:"trashDir"`
+}
+
+// BatchDeleteRule specifies which folder to keep for a pattern
+type BatchDeleteRule struct {
+	PatternID  string `json:"patternId"`
+	KeepFolder string `json:"keepFolder"`
+}
+
+// BatchDeleteResponse represents the response from batch deletion
+type BatchDeleteResponse struct {
+	Success     int      `json:"success"`
+	Failed      int      `json:"failed"`
+	FailedFiles []string `json:"failedFiles,omitempty"`
+}
+
+// handleBatchDelete applies batch deletion rules to all matching duplicates
+func (s *Server) handleBatchDelete(c *gin.Context) {
+	var req BatchDeleteRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(req.Rules) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No rules specified"})
+		return
+	}
+
+	// Create rule map for quick lookup
+	ruleMap := make(map[string]string)
+	for _, rule := range req.Rules {
+		ruleMap[rule.PatternID] = rule.KeepFolder
+	}
+
+	// Get all duplicate groups
+	groups, _, _, err := findDuplicatesPaginated(s.db, 0, 100000)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find duplicates: " + err.Error()})
+		return
+	}
+
+	var successCount, failedCount int
+	var failedFiles []string
+
+	// Create trash directory if specified
+	if req.TrashDir != "" {
+		if err := os.MkdirAll(req.TrashDir, 0755); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create trash directory: " + err.Error()})
+			return
+		}
+	}
+
+	for _, group := range groups {
+		// Extract unique folders for this group
+		folderSet := make(map[string]bool)
+		for _, file := range group.Files {
+			dir := filepath.Dir(file.Path)
+			folderSet[dir] = true
+		}
+
+		folders := make([]string, 0, len(folderSet))
+		for folder := range folderSet {
+			folders = append(folders, folder)
+		}
+		sortStrings(folders)
+
+		patternID := createPatternID(folders)
+
+		// Check if there's a rule for this pattern
+		keepFolder, hasRule := ruleMap[patternID]
+		if !hasRule {
+			continue
+		}
+
+		// Delete files not in the keep folder
+		for _, file := range group.Files {
+			fileDir := filepath.Dir(file.Path)
+			if fileDir == keepFolder {
+				continue // Keep this file
+			}
+
+			// Delete or move to trash
+			if req.TrashDir != "" {
+				baseName := filepath.Base(file.Path)
+				destPath := filepath.Join(req.TrashDir, baseName)
+
+				// Handle duplicate names in trash
+				if _, err := os.Stat(destPath); err == nil {
+					ext := filepath.Ext(baseName)
+					nameWithoutExt := strings.TrimSuffix(baseName, ext)
+					destPath = filepath.Join(req.TrashDir, nameWithoutExt+"_"+time.Now().Format("20060102_150405_000")+ext)
+				}
+
+				if err := os.Rename(file.Path, destPath); err != nil {
+					failedCount++
+					failedFiles = append(failedFiles, filepath.Base(file.Path)+": "+err.Error())
+					continue
+				}
+			} else {
+				if err := os.Remove(file.Path); err != nil {
+					failedCount++
+					failedFiles = append(failedFiles, filepath.Base(file.Path)+": "+err.Error())
+					continue
+				}
+			}
+
+			// Remove from database
+			s.db.Where("path = ?", filepath.ToSlash(file.Path)).Delete(&ImageFile{})
+			successCount++
+		}
+	}
+
+	c.JSON(http.StatusOK, BatchDeleteResponse{
+		Success:     successCount,
+		Failed:      failedCount,
+		FailedFiles: failedFiles,
+	})
+}
+
 // SetupRouter sets up the Gin router with all routes
 func (s *Server) SetupRouter() *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
@@ -475,6 +694,8 @@ func (s *Server) SetupRouter() *gin.Engine {
 	r.POST("/generate-script", s.handleGenerateScript)
 	r.POST("/delete-files", s.handleDeleteFiles)
 	r.GET("/thumbnail", s.handleThumbnail)
+	r.GET("/folder-patterns", s.handleGetFolderPatterns)
+	r.POST("/batch-delete", s.handleBatchDelete)
 
 	return r
 }
