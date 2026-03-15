@@ -5,6 +5,7 @@
 *.so
 *.dylib
 image-dedup
+run.sh
 
 # Test binary
 *.test
