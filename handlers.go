@@ -687,7 +687,8 @@ func (s *Server) SetupRouter() *gin.Engine {
 
 	// Load HTML templates
 	r.SetHTMLTemplate(template.Must(template.ParseFiles("templates/index.html")))
-
+	// Serve static files
+	r.Static("/static", "./static")
 	// Routes
 	r.GET("/", s.handleIndex)
 	r.POST("/scan", s.handleScan)
