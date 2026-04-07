@@ -74,6 +74,7 @@ export const translations = {
     "gallery.loadingMore": "Loading more images...",
     "gallery.allLoaded": "All {count} images loaded",
     "gallery.noPreview": "No preview",
+    "gallery.folderImageCount": "({count})",
 
     // Gallery image list table
     "galleryList.fileName": "File Name",
@@ -234,6 +235,7 @@ export const translations = {
     "gallery.loadingMore": "Загрузка изображений...",
     "gallery.allLoaded": "Все {count} изображений загружены",
     "gallery.noPreview": "Нет превью",
+    "gallery.folderImageCount": "({count})",
 
     // Gallery image list table
     "galleryList.fileName": "Имя файла",
