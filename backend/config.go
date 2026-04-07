@@ -13,6 +13,7 @@ type AppConfig struct {
 	DBPassword string
 	DBName     string
 
+	ServerHost  string
 	ServerPort  string
 	CORSOrigins []string
 }
@@ -31,7 +32,8 @@ func LoadConfig() *AppConfig {
 		DBUser:      getEnv("DB_USER", "postgres"),
 		DBPassword:  getEnv("DB_PASSWORD", "postgres"),
 		DBName:      getEnv("DB_NAME", "image_dedup"),
-		ServerPort:  getEnv("SERVER_PORT", "8080"),
+		ServerHost:  getEnv("SERVER_HOST", "0.0.0.0"),
+		ServerPort:  getEnv("SERVER_PORT", "5170"),
 		CORSOrigins: origins,
 	}
 }

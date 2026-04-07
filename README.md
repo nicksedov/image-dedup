@@ -73,8 +73,9 @@ image-dedup/
 | `DB_USER`      | Пользователь PostgreSQL               | `postgres`               |
 | `DB_PASSWORD`  | Пароль PostgreSQL                     | `postgres`               |
 | `DB_NAME`      | Имя базы данных                       | `image_dedup`            |
-| `SERVER_PORT`  | Порт API сервера                      | `8080`                   |
-| `CORS_ORIGINS` | Разрешенные источники (через запятую) | `http://localhost:5173`  |
+| `SERVER_HOST`  | Адрес привязки API сервера            | `0.0.0.0`               |
+| `SERVER_PORT`  | Порт API сервера                      | `5170`                   |
+| `CORS_ORIGINS` | Разрешенные источники (через запятую), или `*` для разрешения всех | `http://localhost:5173`  |
 
 ### Frontend (`frontend/.env`)
 
@@ -82,7 +83,7 @@ image-dedup/
 |----------------|-------------------------------------|--------------|
 | `VITE_API_URL` | URL бэкенд API                      | (пусто -- используется Vite прокси) |
 
-В режиме разработки Vite проксирует запросы `/api/*` на бэкенд (`http://localhost:8080`).
+В режиме разработки Vite проксирует запросы `/api/*` на бэкенд (`http://localhost:5170`).
 Для продакшена укажите полный URL бэкенда в `VITE_API_URL`.
 
 ## Сборка и запуск
@@ -128,14 +129,10 @@ npm run build    # Собирает в frontend/dist/
 
 ```bash
 cd backend
-go run . --port 8080 C:\path\to\photos
+go run .
 ```
 
-Или с несколькими директориями:
-
-```bash
-go run . --port 8080 C:\photos D:\backup E:\downloads
-```
+Бэкенд запустится на `http://0.0.0.0:5170` по умолчанию.
 
 **Терминал 2 -- фронтенд:**
 
@@ -151,10 +148,96 @@ npm run dev
 ```bash
 # Бэкенд
 cd backend
-./image-dedup --port 8080 /path/to/photos
+./image-dedup      # Windows: image-dedup.exe
 
 # Фронтенд -- статические файлы из frontend/dist/
 # Раздайте через nginx, Caddy или любой другой веб-сервер
+```
+
+## Доступ с удалённой машины (тестирование в локальной сети)
+
+Оба сервера (бэкенд и фронтенд) по умолчанию слушают на `0.0.0.0`, что делает их доступными с любой машины в локальной сети.
+
+### 1. Узнайте IP-адрес сервера
+
+На машине, где запущены серверы:
+
+```bash
+# Windows
+ipconfig
+
+# Linux / macOS
+ip addr        # или: hostname -I
+```
+
+Запомните IPv4-адрес (например, `192.168.1.100`).
+
+### 2. Настройте бэкенд
+
+В `backend/.env` убедитесь, что заданы:
+
+```env
+SERVER_HOST=0.0.0.0
+CORS_ORIGINS=*
+```
+
+- `SERVER_HOST=0.0.0.0` -- бэкенд слушает на всех сетевых интерфейсах
+- `CORS_ORIGINS=*` -- разрешает запросы с любого источника (подходит для разработки в доверенной сети)
+
+Для более строгой настройки перечислите конкретные источники:
+
+```env
+CORS_ORIGINS=http://192.168.1.100:5173,http://localhost:5173
+```
+
+### 3. Настройте фронтенд
+
+В `frontend/.env` оставьте `VITE_API_URL` пустым:
+
+```env
+VITE_API_URL=
+```
+
+Это обеспечивает проксирование через Vite -- все `/api/*` запросы будут перенаправляться на бэкенд на той же машине. Vite dev-сервер уже слушает на `0.0.0.0` (`host: true` в `vite.config.ts`).
+
+### 4. Запустите оба сервера
+
+```bash
+# Терминал 1 -- бэкенд
+cd backend
+go run .
+
+# Терминал 2 -- фронтенд
+cd frontend
+npm run dev
+```
+
+### 5. Откройте с удалённой машины
+
+На удалённой машине в браузере откройте:
+
+```
+http://192.168.1.100:5173
+```
+
+Замените `192.168.1.100` на реальный IP-адрес сервера.
+
+### 6. Файрвол
+
+Если удалённая машина не может подключиться, проверьте, что файрвол на серверной машине разрешает входящие соединения на порты **5170** (бэкенд) и **5173** (фронтенд).
+
+Windows (PowerShell от администратора):
+
+```powershell
+netsh advfirewall firewall add rule name="Image Dedup Backend" dir=in action=allow protocol=TCP localport=5170
+netsh advfirewall firewall add rule name="Image Dedup Frontend" dir=in action=allow protocol=TCP localport=5173
+```
+
+Linux:
+
+```bash
+sudo ufw allow 5170/tcp
+sudo ufw allow 5173/tcp
 ```
 
 ## API

@@ -41,12 +41,12 @@ func main() {
 	server := NewServer(db, scanManager, config)
 	router := server.SetupRouter()
 
-	fmt.Printf("\nStarting API server on http://localhost:%s\n", config.ServerPort)
+	fmt.Printf("\nStarting API server on http://%s:%s\n", config.ServerHost, config.ServerPort)
 	fmt.Printf("CORS allowed origins: %s\n", strings.Join(config.CORSOrigins, ", "))
 	fmt.Println("Configure gallery folders via the web UI Settings tab.")
 	fmt.Println("Press Ctrl+C to stop the server")
 
-	if err := router.Run(fmt.Sprintf(":%s", config.ServerPort)); err != nil {
+	if err := router.Run(fmt.Sprintf("%s:%s", config.ServerHost, config.ServerPort)); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }

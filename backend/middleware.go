@@ -7,14 +7,27 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// SetupCORS configures CORS middleware based on AppConfig
+// SetupCORS configures CORS middleware based on AppConfig.
+// If CORSOrigins contains "*", all origins are allowed dynamically
+// (compatible with AllowCredentials).
 func SetupCORS(config *AppConfig) gin.HandlerFunc {
-	return cors.New(cors.Config{
-		AllowOrigins:     config.CORSOrigins,
+	allowAll := len(config.CORSOrigins) == 1 && config.CORSOrigins[0] == "*"
+
+	corsConfig := cors.Config{
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
-	})
+	}
+
+	if allowAll {
+		corsConfig.AllowOriginFunc = func(origin string) bool {
+			return true
+		}
+	} else {
+		corsConfig.AllowOrigins = config.CORSOrigins
+	}
+
+	return cors.New(corsConfig)
 }
