@@ -161,8 +161,8 @@ export const translations = {
 
   ru: {
     // Header
-    "header.title": "Image Dedup",
-    "header.subtitle": "Управление дубликатами изображений в медиатеке",
+    "header.title": "Image Toolkit",
+    "header.subtitle": "Универсальный набор инструментов для работы с изображениями",
     "header.toggleTheme": "Переключить тему",
     "header.toggleLanguage": "Переключить язык",
 
