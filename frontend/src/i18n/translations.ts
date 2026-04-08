@@ -182,6 +182,14 @@ export const translations = {
     "batchDedup.successWithFailed": "Successfully deleted {count} file(s). Failed: {failed}.",
     "batchDedup.errorFailed": "Failed to apply batch rules",
     "batchDedup.returnBack": "Return to skipped ({count})",
+    "batchDedup.step": "Step {current} of {total}",
+    "batchDedup.skipped": "Skipped: {count}",
+    "batchDedup.backToSkipped": "Back to skipped",
+    "batchDedup.back": "Back",
+    "batchDedup.forward": "Forward →",
+    "batchDedup.finish": "Finish",
+    "batchDedup.backToPattern": "Back to pattern",
+    "batchDedup.skipThis": "Skip this",
   },
 
   ru: {
@@ -367,5 +375,13 @@ export const translations = {
     "batchDedup.successWithFailed": "Успешно удалено {count} файлов. Ошибок: {failed}.",
     "batchDedup.errorFailed": "Не удалось применить пакетные правила",
     "batchDedup.returnBack": "Вернуться к пропущенным ({count})",
+    "batchDedup.step": "Шаг {current} из {total}",
+    "batchDedup.skipped": "Пропущено: {count}",
+    "batchDedup.backToSkipped": "Вернуться к пропускам",
+    "batchDedup.back": "Назад",
+    "batchDedup.forward": "Вперёд →",
+    "batchDedup.finish": "Завершить",
+    "batchDedup.backToPattern": "Вернуться к шаблону",
+    "batchDedup.skipThis": "Пропустить этот",
   },
 } as const

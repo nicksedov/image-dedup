@@ -171,10 +171,10 @@ export function BatchDeduplicationModal({
           ) : currentPattern ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm text-muted-foreground pb-2 border-b">
-                <span>Шаг {currentStep + 1} из {totalSteps}</span>
+                <span>{t("batchDedup.step", { current: currentStep + 1, total: totalSteps })}</span>
                 {skippedPatterns.length > 0 && (
                   <span className="text-xs">
-                    Пропущено: {skippedPatterns.length}
+                    {t("batchDedup.skipped", { count: skippedPatterns.length })}
                   </span>
                 )}
               </div>
@@ -236,28 +236,28 @@ export function BatchDeduplicationModal({
             <>
               {skippedPatterns.length > 0 && currentStep === totalSteps - 2 && (
                 <Button variant="ghost" onClick={handleBackToSkipped} className="mr-auto">
-                  Вернуться к пропускам
+                  {t("batchDedup.backToSkipped")}
                 </Button>
               )}
               {canGoBack ? (
                 <Button variant="secondary" onClick={handleBack}>
-                  {skippedPatterns.length > 0 ? 'Назад к пропускам' : 'Назад'}
+                  {skippedPatterns.length > 0 ? t("batchDedup.backToSkipped") : t("batchDedup.back")}
                 </Button>
               ) : null}
               <Button onClick={handleNext}>
-                {skippedPatterns.length > 0 || currentStep < totalSteps - 2 ? 'Вперед →' : 'Завершить'}
+                {skippedPatterns.length > 0 || currentStep < totalSteps - 2 ? t("batchDedup.forward") : t("batchDedup.finish")}
               </Button>
             </>
           ) : (
             <div className="flex items-center gap-2 w-full">
               {canGoBack ? (
                 <Button variant="secondary" onClick={handleBack} disabled={isSubmitting}>
-                  {skippedPatterns.includes(currentPattern?.id || "") ? 'Вернуться к шаблону' : 'Назад'}
+                  {skippedPatterns.includes(currentPattern?.id || "") ? t("batchDedup.backToPattern") : t("batchDedup.back")}
                 </Button>
               ) : null}
               {skippedPatterns.length > 0 ? (
                 <Button variant="outline" onClick={() => handlePatternSkip(currentPattern?.id || "")} disabled={isSubmitting}>
-                  Пропустить этот
+                  {t("batchDedup.skipThis")}
                 </Button>
               ) : null}
               <Button variant="destructive" onClick={handleFinalApply} disabled={isSubmitting || isLoading} className="ml-auto">
