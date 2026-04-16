@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiDelete, apiPut } from "./client"
+import { apiGet, apiPost, apiDelete, apiPut, apiPatch } from "./client"
 import type {
   DuplicatesResponse,
   ScanResponse,
@@ -19,6 +19,17 @@ import type {
   TrashInfoResponse,
   CleanTrashResponse,
   ImageMetadataResponse,
+  AuthStatusResponse,
+  LoginRequest,
+  LoginResponse,
+  ChangePasswordRequest,
+  BootstrapSetupRequest,
+  UpdateProfileRequest,
+  CreateUserRequest,
+  UpdateUserRequest,
+  ResetPasswordRequest,
+  UsersListResponse,
+  AuditLogsResponse,
 } from "@/types"
 
 export function fetchDuplicates(page: number, pageSize: number): Promise<DuplicatesResponse> {
@@ -104,4 +115,60 @@ export function cleanTrash(): Promise<CleanTrashResponse> {
 
 export function fetchImageMetadata(path: string): Promise<ImageMetadataResponse> {
   return apiGet<ImageMetadataResponse>("/api/image-metadata", { path })
+}
+
+// --- Auth ---
+
+export function fetchAuthStatus(): Promise<AuthStatusResponse> {
+  return apiGet<AuthStatusResponse>("/api/auth/status")
+}
+
+export function login(req: LoginRequest): Promise<LoginResponse> {
+  return apiPost<LoginResponse>("/api/auth/login", req)
+}
+
+export function logout(): Promise<{ message: string }> {
+  return apiPost<{ message: string }>("/api/auth/logout")
+}
+
+export function fetchCurrentUser(): Promise<{ user: import("@/types").UserDTO }> {
+  return apiGet<{ user: import("@/types").UserDTO }>("/api/auth/me")
+}
+
+export function changePassword(req: ChangePasswordRequest): Promise<{ message: string }> {
+  return apiPost<{ message: string }>("/api/auth/change-password", req)
+}
+
+export function bootstrapSetup(req: BootstrapSetupRequest): Promise<{ user: import("@/types").UserDTO; message: string }> {
+  return apiPost<{ user: import("@/types").UserDTO; message: string }>("/api/auth/bootstrap/setup", req)
+}
+
+export function updateProfile(req: UpdateProfileRequest): Promise<{ user: import("@/types").UserDTO }> {
+  return apiPatch<{ user: import("@/types").UserDTO }>("/api/users/me", req)
+}
+
+// --- Admin ---
+
+export function fetchUsers(): Promise<UsersListResponse> {
+  return apiGet<UsersListResponse>("/api/admin/users")
+}
+
+export function createUser(req: CreateUserRequest): Promise<{ user: import("@/types").UserDTO; message: string }> {
+  return apiPost<{ user: import("@/types").UserDTO; message: string }>("/api/admin/users", req)
+}
+
+export function updateUser(id: number, req: UpdateUserRequest): Promise<{ user: import("@/types").UserDTO; message: string }> {
+  return apiPatch<{ user: import("@/types").UserDTO; message: string }>(`/api/admin/users/${id}`, req)
+}
+
+export function deleteUser(id: number): Promise<{ message: string }> {
+  return apiDelete<{ message: string }>(`/api/admin/users/${id}`)
+}
+
+export function resetUserPassword(id: number, req: ResetPasswordRequest): Promise<{ message: string }> {
+  return apiPost<{ message: string }>(`/api/admin/users/${id}/reset-password`, req)
+}
+
+export function fetchAuditLogs(page: number): Promise<AuditLogsResponse> {
+  return apiGet<AuditLogsResponse>("/api/admin/audit", { page: String(page) })
 }

@@ -19,9 +19,15 @@ type AppConfig struct {
 	ServerPort  string
 	CORSOrigins []string
 
-	ScanWorkers        int
-	MetadataWorkers    int
+	ScanWorkers         int
+	MetadataWorkers     int
 	MetadataIntervalMin int
+
+	// Auth configuration
+	BootstrapLogin      string
+	BootstrapPassword   string
+	SessionIdleHours    int
+	SessionAbsoluteDays int
 }
 
 // LoadConfig reads configuration from environment variables
@@ -68,7 +74,21 @@ func LoadConfig() *AppConfig {
 		ScanWorkers:         scanWorkers,
 		MetadataWorkers:     metadataWorkers,
 		MetadataIntervalMin: metadataInterval,
+		BootstrapLogin:      getEnv("BOOTSTRAP_LOGIN", "admin"),
+		BootstrapPassword:   getEnv("BOOTSTRAP_PASSWORD", "admin"),
+		SessionIdleHours:    getEnvInt("SESSION_IDLE_HOURS", 720),   // 30 days
+		SessionAbsoluteDays: getEnvInt("SESSION_ABSOLUTE_DAYS", 90), // 90 days
 	}
+}
+
+// getEnvInt gets environment variable as int with a default value
+func getEnvInt(key string, defaultValue int) int {
+	if value, exists := os.LookupEnv(key); exists {
+		if n, err := strconv.Atoi(value); err == nil {
+			return n
+		}
+	}
+	return defaultValue
 }
 
 // getEnv gets environment variable with a default value

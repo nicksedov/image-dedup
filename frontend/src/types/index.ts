@@ -191,3 +191,87 @@ export interface ImageMetadataResponse {
   found: boolean
   metadata?: ImageMetadataDTO
 }
+
+// --- Auth & User Types ---
+
+export type UserRole = "admin" | "user"
+
+export interface UserDTO {
+  id: number
+  login: string
+  displayName: string
+  role: UserRole
+  isActive: boolean
+  mustChangePassword: boolean
+  createdAt: string
+  lastLoginAt: string | null
+}
+
+export interface AuthStatusResponse {
+  isAuthenticated: boolean
+  isBootstrapMode: boolean
+  user?: UserDTO
+}
+
+export interface LoginRequest {
+  login: string
+  password: string
+}
+
+export interface LoginResponse {
+  user?: UserDTO
+  isBootstrap?: boolean
+  message?: string
+}
+
+export interface ChangePasswordRequest {
+  oldPassword: string
+  newPassword: string
+}
+
+export interface BootstrapSetupRequest {
+  newPassword: string
+  displayName: string
+}
+
+export interface UpdateProfileRequest {
+  displayName: string
+}
+
+export interface CreateUserRequest {
+  login: string
+  displayName: string
+  role: UserRole
+  password: string
+}
+
+export interface UpdateUserRequest {
+  displayName?: string
+  role?: UserRole
+  isActive?: boolean
+}
+
+export interface ResetPasswordRequest {
+  newPassword: string
+}
+
+export interface UsersListResponse {
+  users: UserDTO[]
+  total: number
+}
+
+export interface AuditLogDTO {
+  id: number
+  actorUserId: number | null
+  action: string
+  targetType: string
+  targetId: number | null
+  meta: string
+  createdAt: string
+}
+
+export interface AuditLogsResponse {
+  logs: AuditLogDTO[]
+  total: number
+  page: number
+}

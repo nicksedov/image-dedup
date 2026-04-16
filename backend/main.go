@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -57,9 +58,33 @@ func main() {
 		}
 	}
 
+	// Initialize authentication components
+	sessionConfig := &SessionConfig{
+		IdleTimeout:     time.Duration(config.SessionIdleHours) * time.Hour,
+		AbsoluteTimeout: time.Duration(config.SessionAbsoluteDays) * 24 * time.Hour,
+		CookieMaxAge:    config.SessionIdleHours * 60 * 60,
+		TokenLength:     64,
+	}
+
+	sessionRepo := NewSessionRepository(db, sessionConfig)
+	bootstrap := NewBootstrapService(db, config.BootstrapLogin, config.BootstrapPassword)
+	loginLimiter := NewLoginRateLimiter(10, 15*time.Minute, 30*time.Minute)
+	authService := NewAuthService(db, bootstrap, sessionRepo, loginLimiter)
+	userService := NewUserService(db, sessionRepo)
+	authMiddleware := NewAuthMiddleware(sessionRepo, authService)
+	csrfProtection := NewCSRFProtection()
+	authHandlers := NewAuthHandlers(authService, bootstrap, userService, sessionRepo, db)
+
+	// Start session cleanup job
+	sessionCleanup := NewSessionCleanupJob(sessionRepo, 1*time.Hour)
+	sessionCleanup.Start()
+	defer sessionCleanup.Stop()
+
+	fmt.Println("Authentication system initialized!")
+
 	// Start web server
 	server := NewServer(db, scanManager, metadataManager, config)
-	router := server.SetupRouter()
+	router := server.SetupRouter(authMiddleware, csrfProtection, authHandlers)
 
 	fmt.Printf("\nStarting API server on http://%s:%s\n", config.ServerHost, config.ServerPort)
 	fmt.Printf("Scan workers: %d\n", config.ScanWorkers)

@@ -885,35 +885,77 @@ func (s *Server) handleGetMetadataStatus(c *gin.Context) {
 }
 
 // SetupRouter sets up the Gin router with all API routes
-func (s *Server) SetupRouter() *gin.Engine {
+func (s *Server) SetupRouter(authMiddleware *AuthMiddleware, csrfProtection *CSRFProtection, authHandlers *AuthHandlers) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
+
+	// Security headers middleware
+	r.Use(func(c *gin.Context) {
+		c.Header("Cache-Control", "no-store, no-cache, must-revalidate, private")
+		c.Header("Pragma", "no-cache")
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Header("X-Frame-Options", "DENY")
+		c.Next()
+	})
 
 	// CORS middleware
 	r.Use(SetupCORS(s.config))
 
-	// API routes
+	// CSRF protection
+	r.Use(csrfProtection.Middleware())
+
+	// Public auth routes
 	api := r.Group("/api")
 	{
-		api.GET("/duplicates", s.handleGetDuplicates)
-		api.POST("/scan", s.handleScan)
-		api.GET("/status", s.handleGetStatus)
+		// Auth endpoints (public)
+		auth := api.Group("/auth")
+		{
+			auth.GET("/status", authHandlers.handleAuthStatus)
+			auth.POST("/login", authHandlers.handleLogin)
+			auth.GET("/csrf-token", authHandlers.handleGetCSRFToken)
+		}
 
-		api.POST("/delete-files", s.handleDeleteFiles)
-		api.GET("/thumbnail", s.handleThumbnail)
-		api.GET("/folder-patterns", s.handleGetFolderPatterns)
-		api.POST("/batch-delete", s.handleBatchDelete)
-		api.GET("/folders", s.handleGetFolders)
-		api.POST("/folders", s.handleAddFolder)
-		api.DELETE("/folders/:id", s.handleRemoveFolder)
-		api.GET("/gallery", s.handleGetGalleryImages)
-		api.GET("/image", s.handleServeImage)
-		api.GET("/settings", s.handleGetSettings)
-		api.PUT("/settings", s.handleUpdateSettings)
-		api.GET("/trash-info", s.handleGetTrashInfo)
-		api.POST("/trash-clean", s.handleCleanTrash)
-		api.GET("/image-metadata", s.handleGetImageMetadata)
-		api.GET("/metadata-status", s.handleGetMetadataStatus)
+		// Protected routes (require auth)
+		protected := api.Group("")
+		protected.Use(authMiddleware.RequireAuth())
+		{
+			protected.POST("/auth/logout", authHandlers.handleLogout)
+			protected.GET("/auth/me", authHandlers.handleMe)
+			protected.POST("/auth/change-password", authHandlers.handleChangePassword)
+			protected.PATCH("/users/me", authHandlers.handleUpdateProfile)
+
+			// Existing endpoints (now protected)
+			protected.GET("/duplicates", s.handleGetDuplicates)
+			protected.POST("/scan", s.handleScan)
+			protected.GET("/status", s.handleGetStatus)
+			protected.POST("/delete-files", s.handleDeleteFiles)
+			protected.GET("/thumbnail", s.handleThumbnail)
+			protected.GET("/folder-patterns", s.handleGetFolderPatterns)
+			protected.POST("/batch-delete", s.handleBatchDelete)
+			protected.GET("/folders", s.handleGetFolders)
+			protected.POST("/folders", s.handleAddFolder)
+			protected.DELETE("/folders/:id", s.handleRemoveFolder)
+			protected.GET("/gallery", s.handleGetGalleryImages)
+			protected.GET("/image", s.handleServeImage)
+			protected.GET("/settings", s.handleGetSettings)
+			protected.PUT("/settings", s.handleUpdateSettings)
+			protected.GET("/trash-info", s.handleGetTrashInfo)
+			protected.POST("/trash-clean", s.handleCleanTrash)
+			protected.GET("/image-metadata", s.handleGetImageMetadata)
+			protected.GET("/metadata-status", s.handleGetMetadataStatus)
+
+			// Admin routes
+			admin := protected.Group("/admin")
+			admin.Use(RequireAdmin())
+			{
+				admin.GET("/users", authHandlers.handleListUsers)
+				admin.POST("/users", authHandlers.handleCreateUser)
+				admin.PATCH("/users/:id", authHandlers.handleUpdateUser)
+				admin.DELETE("/users/:id", authHandlers.handleDeleteUser)
+				admin.POST("/users/:id/reset-password", authHandlers.handleResetPassword)
+				admin.GET("/audit", authHandlers.handleAuditLogs)
+			}
+		}
 	}
 
 	return r

@@ -22,7 +22,7 @@ func initDatabase(config *AppConfig) (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	if err := db.AutoMigrate(&ImageFile{}, &GalleryFolder{}, &AppSettings{}, &ImageMetadata{}); err != nil {
+	if err := db.AutoMigrate(&ImageFile{}, &GalleryFolder{}, &AppSettings{}, &ImageMetadata{}, &User{}, &Session{}, &AuditLog{}); err != nil {
 		return nil, fmt.Errorf("failed to migrate database: %w", err)
 	}
 
