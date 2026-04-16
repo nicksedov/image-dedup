@@ -54,19 +54,23 @@ func VerifyPassword(password, hash string) bool {
 	}
 
 	// Parse parameters from the hash string
+	// parts[2] = "v=19", parts[3] = "m=64,t=3,p=2"
 	var version int
+	if _, err := fmt.Sscanf(parts[2], "v=%d", &version); err != nil {
+		return false
+	}
+
 	var memory, iterations, parallelism int
-	_, err := fmt.Sscanf(parts[2], "v=%d,m=%d,t=%d,p=%d", &version, &memory, &iterations, &parallelism)
+	if _, err := fmt.Sscanf(parts[3], "m=%d,t=%d,p=%d", &memory, &iterations, &parallelism); err != nil {
+		return false
+	}
+
+	salt, err := base64.RawStdEncoding.Strict().DecodeString(parts[4])
 	if err != nil {
 		return false
 	}
 
-	salt, err := base64.RawStdEncoding.Strict().DecodeString(parts[3])
-	if err != nil {
-		return false
-	}
-
-	expectedHash, err := base64.RawStdEncoding.Strict().DecodeString(parts[4])
+	expectedHash, err := base64.RawStdEncoding.Strict().DecodeString(parts[5])
 	if err != nil {
 		return false
 	}
