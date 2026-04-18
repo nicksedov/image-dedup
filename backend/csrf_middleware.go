@@ -37,6 +37,7 @@ func NewCSRFProtection() *CSRFProtection {
 			"/api/admin/users",
 			"/api/admin/users/:id",
 			"/api/settings",
+			"/api/batch-delete",
 		},
 	}
 }
