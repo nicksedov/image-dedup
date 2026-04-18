@@ -9,7 +9,7 @@ RUN go mod download
 
 COPY backend/ ./
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server ./cmd/server
 
 FROM alpine:3.23
 
