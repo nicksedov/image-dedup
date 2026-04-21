@@ -26,7 +26,8 @@ export function I18nProvider({ language, children }: I18nProviderProps) {
 
   // Register global translate function for API calls
   useEffect(() => {
-    setGlobalTranslate(t)
+    const wrapperT = (key: string) => t(key as any)
+    setGlobalTranslate(wrapperT)
   }, [t])
 
   return (

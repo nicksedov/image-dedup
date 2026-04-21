@@ -84,7 +84,8 @@ export function SettingsTab({ onFolderAdded }: SettingsTabProps) {
     async (path: string) => {
       try {
         const result = await add(path)
-        toast.success(t(result.message as string))
+        const message = result.message as string
+        toast.success(message.includes(".") ? t(message as any) : message)
         if (result.scanStarted) {
           setOnScanComplete(() => {
             refetch()
@@ -104,7 +105,8 @@ export function SettingsTab({ onFolderAdded }: SettingsTabProps) {
     async (id: number) => {
       try {
         const result = await remove(id)
-        toast.success(t("settings.toastFilesRemoved", { message: t(result.message as string), count: result.filesRemoved }))
+        const message = result.message as string
+        toast.success(t("settings.toastFilesRemoved", { message: message.includes(".") ? t(message as any) : message, count: result.filesRemoved }))
       } catch (err) {
         toast.error(err instanceof Error ? err.message : t("settings.toastRemoveFailed"))
       }

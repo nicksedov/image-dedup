@@ -112,8 +112,8 @@ cp frontend/.env.example frontend/.env
 ```bash
 cd backend
 go mod tidy
-go build -o image-toolkit.exe .    # Windows
-go build -o image-toolkit .        # Linux/macOS
+go build -o image-toolkit.exe ./cmd/server/    # Windows
+go build -o image-toolkit ./cmd/server/        # Linux/macOS
 ```
 
 #### Для запуска на сервере в Docker-контейнере

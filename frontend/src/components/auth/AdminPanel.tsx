@@ -143,6 +143,7 @@ function UserCard({
   onDelete: () => Promise<void>
   onToggleActive: () => Promise<void>
 }) {
+  const { t } = useTranslation()
   return (
     <Card>
       <CardContent className="flex items-center justify-between p-4">
@@ -196,6 +197,7 @@ function CreateUserDialog({
   onOpenChange: (open: boolean) => void
   onSuccess: () => void
 }) {
+  const { t } = useTranslation()
   const [login, setLogin] = useState("")
   const [displayName, setDisplayName] = useState("")
   const [role, setRole] = useState<UserRole>("user")
@@ -279,6 +281,7 @@ function EditUserDialog({
   onClose: () => void
   onSuccess: () => void
 }) {
+  const { t } = useTranslation()
   const [displayName, setDisplayName] = useState(user.displayName)
   const [role, setRole] = useState<UserRole>(user.role)
   const [isActive, setIsActive] = useState(user.isActive)
@@ -362,6 +365,7 @@ function ResetPasswordDialog({
   user: UserDTO
   onClose: () => void
 }) {
+  const { t } = useTranslation()
   const [newPassword, setNewPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
