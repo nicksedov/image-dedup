@@ -13,6 +13,7 @@ import (
 	"image-toolkit/internal/application/imaging"
 	"image-toolkit/internal/domain"
 	"image-toolkit/internal/interfaces/dto"
+	"image-toolkit/internal/interfaces/i18n"
 
 	"github.com/gin-gonic/gin"
 )
@@ -41,7 +42,7 @@ func (s *Server) handleGetDuplicates(c *gin.Context) {
 	offset := (page - 1) * pageSize
 	groups, totalGroups, totalFiles, err := imaging.FindDuplicatesPaginated(s.db, offset, pageSize)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to find duplicates: %v", err)})
+		c.JSON(http.StatusInternalServerError, i18n.ErrorResponse(i18n.MsgScanDuplicateFailed))
 		return
 	}
 
@@ -130,10 +131,10 @@ func (s *Server) handleGetDuplicates(c *gin.Context) {
 // handleScan triggers an async scan of directories
 func (s *Server) handleScan(c *gin.Context) {
 	if err := s.scanManager.StartScan(); err != nil {
-		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		c.JSON(http.StatusConflict, i18n.ErrorResponse(i18n.MsgScanFailed))
 		return
 	}
-	c.JSON(http.StatusAccepted, dto.ScanResponse{Message: "Scan started"})
+	c.JSON(http.StatusAccepted, dto.ScanResponse{Message: i18n.MsgScanStarted})
 }
 
 // handleGetStatus returns the current scan status
@@ -145,13 +146,13 @@ func (s *Server) handleGetStatus(c *gin.Context) {
 func (s *Server) handleThumbnail(c *gin.Context) {
 	path := c.Query("path")
 	if path == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Path required"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgImagePathRequired))
 		return
 	}
 
 	thumbnail, err := imaging.GenerateThumbnail(path, s.thumbnailCache)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to generate thumbnail: %v", err)})
+		c.JSON(http.StatusInternalServerError, i18n.ErrorResponse(i18n.MsgImageThumbnailFailed))
 		return
 	}
 
@@ -162,12 +163,12 @@ func (s *Server) handleThumbnail(c *gin.Context) {
 func (s *Server) handleDeleteFiles(c *gin.Context) {
 	var req dto.DeleteFilesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.ValidationError))
 		return
 	}
 
 	if len(req.FilePaths) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No files selected"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgScanNoFilesSelected))
 		return
 	}
 
@@ -176,7 +177,7 @@ func (s *Server) handleDeleteFiles(c *gin.Context) {
 
 	if req.TrashDir != "" {
 		if err := os.MkdirAll(req.TrashDir, 0755); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create trash directory: " + err.Error()})
+			c.JSON(http.StatusInternalServerError, i18n.ErrorResponse(i18n.MsgScanTrashDirFailed))
 			return
 		}
 
@@ -225,7 +226,7 @@ func (s *Server) handleDeleteFiles(c *gin.Context) {
 func (s *Server) handleGetFolderPatterns(c *gin.Context) {
 	groups, _, _, err := imaging.FindDuplicatesPaginated(s.db, 0, 100000)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find duplicates: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, i18n.ErrorResponse(i18n.MsgScanDuplicateFailed))
 		return
 	}
 
@@ -274,12 +275,12 @@ func (s *Server) handleGetFolderPatterns(c *gin.Context) {
 func (s *Server) handleBatchDelete(c *gin.Context) {
 	var req dto.BatchDeleteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.ValidationError))
 		return
 	}
 
 	if len(req.Rules) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No rules specified"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.ValidationError))
 		return
 	}
 
@@ -290,7 +291,7 @@ func (s *Server) handleBatchDelete(c *gin.Context) {
 
 	groups, _, _, err := imaging.FindDuplicatesPaginated(s.db, 0, 100000)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to find duplicates: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, i18n.ErrorResponse(i18n.MsgScanDuplicateFailed))
 		return
 	}
 
@@ -299,7 +300,7 @@ func (s *Server) handleBatchDelete(c *gin.Context) {
 
 	if req.TrashDir != "" {
 		if err := os.MkdirAll(req.TrashDir, 0755); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create trash directory: " + err.Error()})
+			c.JSON(http.StatusInternalServerError, i18n.ErrorResponse(i18n.MsgScanTrashDirFailed))
 			return
 		}
 	}
@@ -396,24 +397,24 @@ func (s *Server) handleGetFolders(c *gin.Context) {
 func (s *Server) handleAddFolder(c *gin.Context) {
 	var req dto.AddFolderRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Path is required"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgFolderPathRequired))
 		return
 	}
 
 	// Validate directory exists
 	absPath, err := filepath.Abs(req.Path)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid path: %v", err)})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgFolderInvalidPath))
 		return
 	}
 
 	info, err := os.Stat(absPath)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Cannot access path: %v", err)})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgFolderCannotAccessPath))
 		return
 	}
 	if !info.IsDir() {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Path is not a directory"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgFolderNotDirectory))
 		return
 	}
 
@@ -423,7 +424,7 @@ func (s *Server) handleAddFolder(c *gin.Context) {
 	var settings domain.AppSettings
 	if result := s.db.First(&settings, 1); result.Error == nil && settings.TrashDir != "" {
 		if reason := pathsConflict(normalizedPath, settings.TrashDir); reason != "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Gallery folder conflicts with trash directory: paths must not overlap"})
+			c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgFolderConflictTrash))
 			return
 		}
 	}
@@ -431,10 +432,10 @@ func (s *Server) handleAddFolder(c *gin.Context) {
 	folder := domain.GalleryFolder{Path: normalizedPath}
 	if result := s.db.Create(&folder); result.Error != nil {
 		if strings.Contains(result.Error.Error(), "duplicate") || strings.Contains(result.Error.Error(), "UNIQUE") {
-			c.JSON(http.StatusConflict, gin.H{"error": "This folder is already in the gallery"})
+			c.JSON(http.StatusConflict, i18n.ErrorResponse(i18n.MsgFolderAlreadyInGallery))
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to add folder: %v", result.Error)})
+		c.JSON(http.StatusInternalServerError, i18n.ErrorResponse(i18n.MsgFolderAddFailed))
 		return
 	}
 
@@ -445,7 +446,7 @@ func (s *Server) handleAddFolder(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, dto.AddFolderResponse{
-		Message: "Folder added to gallery",
+		Message:     i18n.MsgFolderAdded,
 		Folder: dto.GalleryFolderDTO{
 			ID:        folder.ID,
 			Path:      folder.Path,
@@ -462,7 +463,7 @@ func (s *Server) handleRemoveFolder(c *gin.Context) {
 
 	var folder domain.GalleryFolder
 	if result := s.db.First(&folder, id); result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Folder not found"})
+		c.JSON(http.StatusNotFound, i18n.ErrorResponse(i18n.MsgFolderNotFound))
 		return
 	}
 
@@ -475,7 +476,7 @@ func (s *Server) handleRemoveFolder(c *gin.Context) {
 	s.db.Delete(&folder)
 
 	c.JSON(http.StatusOK, dto.RemoveFolderResponse{
-		Message:      "Folder removed from gallery",
+		Message:      i18n.MsgFolderRemoved,
 		FilesRemoved: filesRemoved,
 	})
 }
@@ -558,7 +559,7 @@ func (s *Server) handleGetGalleryImages(c *gin.Context) {
 func (s *Server) handleServeImage(c *gin.Context) {
 	path := c.Query("path")
 	if path == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Path required"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgImagePathRequired))
 		return
 	}
 
@@ -574,7 +575,7 @@ func (s *Server) handleServeImage(c *gin.Context) {
 		}
 	}
 	if !allowed {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: path is not within a gallery folder"})
+		c.JSON(http.StatusForbidden, i18n.ErrorResponse(i18n.MsgImageAccessDenied))
 		return
 	}
 
@@ -582,7 +583,7 @@ func (s *Server) handleServeImage(c *gin.Context) {
 	osPath := filepath.FromSlash(path)
 
 	if _, err := os.Stat(osPath); os.IsNotExist(err) {
-		c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+		c.JSON(http.StatusNotFound, i18n.ErrorResponse(i18n.MsgImageNotFound))
 		return
 	}
 
@@ -609,7 +610,7 @@ func (s *Server) handleGetSettings(c *gin.Context) {
 func (s *Server) handleUpdateSettings(c *gin.Context) {
 	var req dto.UpdateSettingsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.ValidationError))
 		return
 	}
 
@@ -617,11 +618,11 @@ func (s *Server) handleUpdateSettings(c *gin.Context) {
 	validLanguages := map[string]bool{"en": true, "ru": true}
 
 	if req.Theme != "" && !validThemes[req.Theme] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid theme. Must be 'light' or 'dark'"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgImageInvalidTheme))
 		return
 	}
 	if req.Language != "" && !validLanguages[req.Language] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid language. Must be 'en' or 'ru'"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgImageInvalidLanguage))
 		return
 	}
 
@@ -642,7 +643,7 @@ func (s *Server) handleUpdateSettings(c *gin.Context) {
 			// Normalize the trash dir path
 			absTrash, err := filepath.Abs(newTrashDir)
 			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid trash directory path"})
+				c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgImageInvalidTrashPath))
 				return
 			}
 			normalizedTrash := filepath.ToSlash(absTrash)
@@ -652,7 +653,7 @@ func (s *Server) handleUpdateSettings(c *gin.Context) {
 			s.db.Find(&galleryFolders)
 			for _, gf := range galleryFolders {
 				if reason := pathsConflict(normalizedTrash, gf.Path); reason != "" {
-					c.JSON(http.StatusBadRequest, gin.H{"error": "Trash directory conflicts with gallery folder \"" + gf.Path + "\": paths must not overlap"})
+					c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgImageTrashConflict))
 					return
 				}
 			}
@@ -714,19 +715,19 @@ func (s *Server) handleGetTrashInfo(c *gin.Context) {
 func (s *Server) handleCleanTrash(c *gin.Context) {
 	var settings domain.AppSettings
 	if result := s.db.First(&settings, 1); result.Error != nil || settings.TrashDir == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Trash directory is not configured"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgTrashNotConfigured))
 		return
 	}
 
 	info, err := os.Stat(settings.TrashDir)
 	if err != nil || !info.IsDir() {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Trash directory does not exist"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgTrashNotExists))
 		return
 	}
 
 	entries, err := os.ReadDir(settings.TrashDir)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read trash directory: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, i18n.ErrorResponse(i18n.MsgTrashReadFailed))
 		return
 	}
 

@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useTranslation } from "@/i18n"
 
 export function LoginScreen() {
   const { login, isBootstrapMode, setBootstrapVerified } = useAuth()
+  const { t } = useTranslation()
   const [loginInput, setLoginInput] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -17,7 +19,7 @@ export function LoginScreen() {
 
   useEffect(() => {
     const handleNavigateToProfile = () => {
-      toast.info("Выйдите из системы для входа в другом аккаунте")
+      toast.info(t("adminPanel.loginAgain"))
     }
     window.addEventListener("navigate-to-profile", handleNavigateToProfile as EventListener)
     return () => {
@@ -30,7 +32,7 @@ export function LoginScreen() {
     setError("")
 
     if (!loginInput.trim() || !password.trim()) {
-      setError("Заполните все поля")
+      setError(t("adminPanel.wrongFields"))
       return
     }
 
@@ -46,10 +48,10 @@ export function LoginScreen() {
 
       if (response.user) {
         login(response.user)
-        toast.success("Вход выполнен")
+        toast.success(t("adminPanel.loginSuccess"))
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Неверный логин или пароль"
+      const message = err instanceof Error ? err.message : t("adminPanel.loginFailed")
       setError(message)
     } finally {
       setIsLoading(false)
@@ -64,35 +66,35 @@ export function LoginScreen() {
             <ShieldAlert className="h-6 w-6 text-primary" />
           </div>
           <CardTitle className="text-2xl font-bold">
-            {isBootstrapMode ? "Первичная настройка" : "Image Toolkit"}
+            {isBootstrapMode ? t("adminPanel.bootstrapTitle") : t("adminPanel.loginTitle")}
           </CardTitle>
           <CardDescription>
             {isBootstrapMode
-              ? "Войдите под учетной записью администратора для первичной настройки системы"
-              : "Введите свои учетные данные для входа"}
+              ? t("adminPanel.bootstrapDescAdmin")
+              : t("adminPanel.loginDesc")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="login">Логин</Label>
+              <Label htmlFor="login">{t("adminPanel.login")}</Label>
               <Input
                 id="login"
                 type="text"
                 autoComplete="username"
-                placeholder="Введите логин"
+                placeholder={t("adminPanel.loginPlaceholder")}
                 value={loginInput}
                 onChange={(e) => setLoginInput(e.target.value)}
                 disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Пароль</Label>
+              <Label htmlFor="password">{t("adminPanel.passwordPlaceholder")}</Label>
               <Input
                 id="password"
                 type="password"
                 autoComplete="current-password"
-                placeholder="Введите пароль"
+                placeholder={t("adminPanel.passwordPlaceholder")}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
@@ -105,7 +107,7 @@ export function LoginScreen() {
             )}
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isLoading ? "Вход..." : "Войти"}
+              {isLoading ? t("adminPanel.setup") : t("adminPanel.loginTitle")}
             </Button>
           </form>
         </CardContent>

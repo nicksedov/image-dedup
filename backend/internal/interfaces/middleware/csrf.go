@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strings"
 
+	"image-toolkit/internal/interfaces/i18n"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -71,7 +73,7 @@ func (p *CSRFProtection) Middleware() gin.HandlerFunc {
 			referer := c.GetHeader("Referer")
 			// Allow same-origin requests
 			if referer != "" && !strings.HasPrefix(referer, origin) {
-				c.JSON(http.StatusForbidden, gin.H{"error": "Origin validation failed"})
+				c.JSON(http.StatusForbidden, i18n.ErrorResponse(i18n.MsgMiddlewareCSRFFailed))
 				c.Abort()
 				return
 			}

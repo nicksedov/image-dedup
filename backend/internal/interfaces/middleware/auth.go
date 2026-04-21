@@ -5,6 +5,7 @@ import (
 
 	"image-toolkit/internal/application/auth"
 	"image-toolkit/internal/domain"
+	"image-toolkit/internal/interfaces/i18n"
 
 	"github.com/gin-gonic/gin"
 )
@@ -37,14 +38,14 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token, err := c.Cookie(SessionCookieName)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Требуется авторизация"})
+			c.JSON(http.StatusUnauthorized, i18n.ErrorResponse(i18n.MsgMiddlewareUnauthorized))
 			c.Abort()
 			return
 		}
 
 		user, err := m.authService.GetCurrentUser(token)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Требуется авторизация"})
+			c.JSON(http.StatusUnauthorized, i18n.ErrorResponse(i18n.MsgMiddlewareUnauthorized))
 			c.Abort()
 			return
 		}
@@ -62,14 +63,14 @@ func RequireAdmin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userVal, exists := c.Get(ContextKeyUser)
 		if !exists {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Недостаточно прав"})
+			c.JSON(http.StatusForbidden, i18n.ErrorResponse(i18n.MsgMiddlewareForbidden))
 			c.Abort()
 			return
 		}
 
 		user, ok := userVal.(*domain.User)
 		if !ok || user.Role != domain.RoleAdmin {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Недостаточно прав"})
+			c.JSON(http.StatusForbidden, i18n.ErrorResponse(i18n.MsgMiddlewareForbidden))
 			c.Abort()
 			return
 		}

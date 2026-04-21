@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useTranslation } from "@/i18n"
 
 export function BootstrapSetupScreen() {
   const { login } = useAuth()
+  const { t } = useTranslation()
   const [displayName, setDisplayName] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -21,17 +23,17 @@ export function BootstrapSetupScreen() {
     setError("")
 
     if (!displayName.trim()) {
-      setError("Введите отображаемое имя")
+      setError(t("adminPanel.setupAdmin"))
       return
     }
 
     if (newPassword.length < 8) {
-      setError("Пароль должен содержать не менее 8 символов")
+      setError(t("adminPanel.passwordTooShort"))
       return
     }
 
     if (newPassword !== confirmPassword) {
-      setError("Пароли не совпадают")
+      setError(t("adminPanel.passwordsMismatch"))
       return
     }
 
@@ -39,9 +41,9 @@ export function BootstrapSetupScreen() {
     try {
       const response = await apiBootstrapSetup({ newPassword, displayName })
       login(response.user)
-      toast.success("Первичная настройка завершена")
+      toast.success(t("adminPanel.bootstrapTitle"))
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Не удалось завершить настройку"
+      const message = err instanceof Error ? err.message : t("adminPanel.finishSetup")
       setError(message)
     } finally {
       setIsLoading(false)
@@ -55,43 +57,43 @@ export function BootstrapSetupScreen() {
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Settings className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-bold">Первичная настройка</CardTitle>
+          <CardTitle className="text-2xl font-bold">{t("adminPanel.bootstrapTitle")}</CardTitle>
           <CardDescription>
-            Создайте учетную запись администратора и задайте постоянный пароль
+            {t("adminPanel.createAccount")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="displayName">Отображаемое имя</Label>
+              <Label htmlFor="displayName">{t("adminPanel.displayName")}</Label>
               <Input
                 id="displayName"
                 type="text"
-                placeholder="Администратор"
+                placeholder={t("adminPanel.setupAdmin")}
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="newPassword">Новый пароль</Label>
+              <Label htmlFor="newPassword">{t("adminPanel.newPassword")}</Label>
               <Input
                 id="newPassword"
                 type="password"
                 autoComplete="new-password"
-                placeholder="Минимум 8 символов"
+                placeholder={t("adminPanel.passwordHint")}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Подтверждение пароля</Label>
+              <Label htmlFor="confirmPassword">{t("adminPanel.confirmPassword")}</Label>
               <Input
                 id="confirmPassword"
                 type="password"
                 autoComplete="new-password"
-                placeholder="Повторите пароль"
+                placeholder={t("adminPanel.repeatPassword")}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 disabled={isLoading}
@@ -104,7 +106,7 @@ export function BootstrapSetupScreen() {
             )}
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isLoading ? "Настройка..." : "Завершить настройку"}
+              {isLoading ? t("adminPanel.setup") : t("adminPanel.finishSetup")}
             </Button>
           </form>
         </CardContent>

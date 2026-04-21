@@ -10,9 +10,12 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
+import { useTranslation } from "@/i18n"
+import { translateApiMessage } from "@/api/client"
 
 export function UserProfile() {
   const { user, updateUser, logout } = useAuth()
+  const { t } = useTranslation()
   const [displayName, setDisplayName] = useState(user?.displayName || "")
   const [isSavingProfile, setIsSavingProfile] = useState(false)
 
@@ -23,7 +26,7 @@ export function UserProfile() {
 
   useEffect(() => {
     const handleNavigateToLogin = () => {
-      toast.info("Ваш сессия истекла. Войти заново.")
+      toast.info(t("adminPanel.sessionExpired"))
     }
     window.addEventListener("navigate-to-login", handleNavigateToLogin as EventListener)
     return () => {
@@ -41,9 +44,10 @@ export function UserProfile() {
     try {
       const response = await apiUpdateProfile({ displayName })
       updateUser(response.user)
-      toast.success("Профиль обновлен")
+      toast.success(t("adminPanel.profileUpdated"))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err))
+      const errorMessage = err instanceof Error ? translateApiMessage(err.message) : t("adminPanel.updateProfile")
+      toast.error(errorMessage)
     } finally {
       setIsSavingProfile(false)
     }
@@ -53,12 +57,12 @@ export function UserProfile() {
     e.preventDefault()
 
     if (newPassword.length < 8) {
-      toast.error("Пароль должен содержать не менее 8 символов")
+      toast.error(t("adminPanel.passwordTooShort"))
       return
     }
 
     if (newPassword !== confirmPassword) {
-      toast.error("Пароли не совпадают")
+      toast.error(t("adminPanel.passwordsMismatch"))
       return
     }
 
@@ -70,16 +74,16 @@ export function UserProfile() {
       setConfirmPassword("")
 
       if (response.mustLogin) {
-        toast.success("Пароль изменен. Войдите заново.")
+        toast.success(t("adminPanel.passwordChanged"))
         await logout()
         navigateToLogin()
       } else {
-        toast.success("Пароль изменен")
+        toast.success(t("adminPanel.passwordChangedSuccess"))
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err)
-      toast.error(message)
-      if (message.includes("Требуется авторизация")) {
+      const error = err instanceof Error ? translateApiMessage(err.message) : t("adminPanel.updatePassword")
+      toast.error(error)
+      if (error.includes("Требуется авторизация") || error.includes("Authorization required")) {
         await logout()
         navigateToLogin()
       }
@@ -97,17 +101,17 @@ export function UserProfile() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Профиль</h2>
-        <p className="text-muted-foreground">Управление учетной записью</p>
+        <h2 className="text-2xl font-bold">{t("adminPanel.updateProfile")}</h2>
+        <p className="text-muted-foreground">{t("adminPanel.description")}</p>
       </div>
 
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
             <User className="h-5 w-5" />
-            <CardTitle>Информация о пользователе</CardTitle>
+            <CardTitle>{t("adminPanel.title")}</CardTitle>
           </div>
-          <CardDescription>Ваша учетная запись и роль в системе</CardDescription>
+          <CardDescription>{t("adminPanel.description")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
@@ -116,13 +120,13 @@ export function UserProfile() {
               <p className="text-sm text-muted-foreground">{user.login}</p>
             </div>
             <Badge variant={user.role === "admin" ? "default" : "secondary"}>
-              {user.role === "admin" ? "Администратор" : "Пользователь"}
+              {user.role === "admin" ? t("adminPanel.admin") : t("adminPanel.user")}
             </Badge>
           </div>
           <Separator />
           <form onSubmit={handleSaveProfile} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="displayName">Отображаемое имя</Label>
+              <Label htmlFor="displayName">{t("adminPanel.displayName")}</Label>
               <Input
                 id="displayName"
                 value={displayName}
@@ -131,7 +135,7 @@ export function UserProfile() {
             </div>
             <Button type="submit" disabled={isSavingProfile || displayName === user.displayName}>
               {isSavingProfile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Сохранить
+              {t("adminPanel.save")}
             </Button>
           </form>
         </CardContent>
@@ -141,14 +145,14 @@ export function UserProfile() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Lock className="h-5 w-5" />
-            <CardTitle>Смена пароля</CardTitle>
+            <CardTitle>{t("adminPanel.changePassword")}</CardTitle>
           </div>
-          <CardDescription>Обновите свой пароль для безопасности</CardDescription>
+          <CardDescription>{t("adminPanel.updatePassword")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="oldPassword">Текущий пароль</Label>
+              <Label htmlFor="oldPassword">{t("adminPanel.currentPassword")}</Label>
               <Input
                 id="oldPassword"
                 type="password"
@@ -158,7 +162,7 @@ export function UserProfile() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="newPassword">Новый пароль</Label>
+              <Label htmlFor="newPassword">{t("adminPanel.newPassword")}</Label>
               <Input
                 id="newPassword"
                 type="password"
@@ -168,7 +172,7 @@ export function UserProfile() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Подтверждение пароля</Label>
+              <Label htmlFor="confirmPassword">{t("adminPanel.confirmPassword")}</Label>
               <Input
                 id="confirmPassword"
                 type="password"
@@ -179,7 +183,7 @@ export function UserProfile() {
             </div>
             <Button type="submit" disabled={isChangingPassword || !oldPassword || !newPassword || !confirmPassword}>
               {isChangingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Изменить пароль
+              {t("adminPanel.updatePassword")}
             </Button>
           </form>
         </CardContent>

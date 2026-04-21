@@ -8,6 +8,7 @@ import (
 	"image-toolkit/internal/application/auth"
 	"image-toolkit/internal/domain"
 	"image-toolkit/internal/interfaces/dto"
+	"image-toolkit/internal/interfaces/i18n"
 	"image-toolkit/internal/interfaces/middleware"
 
 	"github.com/gin-gonic/gin"
@@ -38,7 +39,7 @@ func NewAuthHandlers(authService *auth.AuthService, bootstrap *auth.BootstrapSer
 func (h *AuthHandlers) handleAuthStatus(c *gin.Context) {
 	isBootstrap, err := h.bootstrap.IsBootstrapMode()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		c.JSON(http.StatusInternalServerError, i18n.ErrorResponse(i18n.MsgAuthInternalError))
 		return
 	}
 
@@ -63,7 +64,7 @@ func (h *AuthHandlers) handleAuthStatus(c *gin.Context) {
 func (h *AuthHandlers) handleLogin(c *gin.Context) {
 	var req dto.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный логин или пароль"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgAuthInvalidCredentials))
 		return
 	}
 
@@ -73,10 +74,10 @@ func (h *AuthHandlers) handleLogin(c *gin.Context) {
 	result, err := h.authService.Login(req.Login, req.Password, ipAddress, userAgent)
 	if err != nil {
 		if err == domain.ErrRateLimited {
-			c.JSON(http.StatusTooManyRequests, gin.H{"error": err.Error()})
+			c.JSON(http.StatusTooManyRequests, i18n.ErrorResponse(i18n.ErrRateLimited))
 			return
 		}
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Неверный логин или пароль"})
+		c.JSON(http.StatusUnauthorized, i18n.ErrorResponse(i18n.MsgAuthInvalidCredentials))
 		return
 	}
 
@@ -86,7 +87,7 @@ func (h *AuthHandlers) handleLogin(c *gin.Context) {
 		c.SetCookie(middleware.SessionCookieName, "bootstrap", config.CookieMaxAge, "/", "", true, true)
 		c.JSON(http.StatusOK, gin.H{
 			"isBootstrap": true,
-			"message":     "Bootstrap mode - please complete initial setup",
+			"message":     i18n.MsgAuthBootstrapMode,
 		})
 		return
 	}
@@ -122,14 +123,14 @@ func (h *AuthHandlers) handleLogout(c *gin.Context) {
 
 	// Clear cookie
 	c.SetCookie(middleware.SessionCookieName, "", -1, "/", "", true, true)
-	c.JSON(http.StatusOK, gin.H{"message": "Выход выполнен"})
+	c.JSON(http.StatusOK, gin.H{"message": i18n.MsgAuthLogoutSuccess})
 }
 
 // handleMe returns the current user's profile
 func (h *AuthHandlers) handleMe(c *gin.Context) {
 	user := middleware.GetCurrentUser(c)
 	if user == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Требуется авторизация"})
+		c.JSON(http.StatusUnauthorized, i18n.ErrorResponse(i18n.MsgAuthUnauthorized))
 		return
 	}
 
@@ -142,35 +143,35 @@ func (h *AuthHandlers) handleMe(c *gin.Context) {
 func (h *AuthHandlers) handleChangePassword(c *gin.Context) {
 	user := middleware.GetCurrentUser(c)
 	if user == nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Требуется авторизация"})
+		c.JSON(http.StatusUnauthorized, i18n.ErrorResponse(i18n.MsgAuthUnauthorized))
 		return
 	}
 
 	var req dto.ChangePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат запроса"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgAuthInvalidRequestFormat))
 		return
 	}
 
 	// Validate new password length
 	if len(req.NewPassword) < 8 || len(req.NewPassword) > 128 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Пароль должен содержать от 8 до 128 символов"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgAuthPasswordLength))
 		return
 	}
 
 	if err := h.authService.ChangePassword(user.ID, req.OldPassword, req.NewPassword); err != nil {
 		if err == domain.ErrInvalidCredentials {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Неверный текущий пароль"})
+			c.JSON(http.StatusUnauthorized, i18n.ErrorResponse(i18n.MsgAuthInvalidCurrentPassword))
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось изменить пароль"})
+		c.JSON(http.StatusInternalServerError, i18n.ErrorResponse(i18n.MsgAuthPasswordChangeFailed))
 		return
 	}
 
 	auth.CreateAuditLog(h.db, &user.ID, domain.ActionChangePassword, "user", &user.ID, "")
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":   "Пароль успешно изменен",
+		"message":   i18n.Success,
 		"mustLogin": true,
 	})
 }
@@ -179,27 +180,27 @@ func (h *AuthHandlers) handleChangePassword(c *gin.Context) {
 func (h *AuthHandlers) handleBootstrapSetup(c *gin.Context) {
 	var req dto.BootstrapSetupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат запроса"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgAuthInvalidRequestFormat))
 		return
 	}
 
 	// Validate password
 	if len(req.NewPassword) < 8 || len(req.NewPassword) > 128 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Пароль должен содержать от 8 до 128 символов"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgAuthPasswordLength))
 		return
 	}
 
 	// Create admin user
 	user, err := h.bootstrap.CreateBootstrapAdmin(req.NewPassword, req.DisplayName)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgAuthBootstrapFailed))
 		return
 	}
 
 	// Revoke bootstrap cookie and create real session
 	token, err := h.sessionRepo.CreateSession(user.ID, c.ClientIP(), c.GetHeader("User-Agent"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось создать сессию"})
+		c.JSON(http.StatusInternalServerError, i18n.ErrorResponse(i18n.MsgAuthSessionCreationFailed))
 		return
 	}
 
@@ -220,7 +221,7 @@ func (h *AuthHandlers) handleBootstrapSetup(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"user":    dto.ToUserDTO(user),
-		"message": "Первичная настройка завершена",
+		"message": i18n.MsgAuthBootstrapComplete,
 	})
 }
 
@@ -230,7 +231,7 @@ func (h *AuthHandlers) handleBootstrapSetup(c *gin.Context) {
 func (h *AuthHandlers) handleListUsers(c *gin.Context) {
 	users, err := h.userService.ListUsers()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось получить список пользователей"})
+		c.JSON(http.StatusInternalServerError, i18n.ErrorResponse(i18n.MsgAuthUsersListFailed))
 		return
 	}
 
@@ -251,19 +252,19 @@ func (h *AuthHandlers) handleCreateUser(c *gin.Context) {
 
 	var req dto.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат запроса"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgAuthInvalidRequestFormat))
 		return
 	}
 
 	// Validate password length
 	if len(req.Password) < 8 || len(req.Password) > 128 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Пароль должен содержать от 8 до 128 символов"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgAuthPasswordLength))
 		return
 	}
 
 	// Validate role
 	if req.Role != domain.RoleAdmin && req.Role != domain.RoleUser {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверная роль"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgAuthInvalidRole))
 		return
 	}
 
@@ -276,7 +277,7 @@ func (h *AuthHandlers) handleCreateUser(c *gin.Context) {
 
 	user, err := h.userService.CreateUser(admin.ID, input)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.ErrRateLimited))
 		return
 	}
 
@@ -284,7 +285,7 @@ func (h *AuthHandlers) handleCreateUser(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"user":    dto.ToUserDTO(user),
-		"message": "Пользователь создан",
+		"message": i18n.MsgAuthUserCreated,
 	})
 }
 
@@ -295,13 +296,13 @@ func (h *AuthHandlers) handleUpdateUser(c *gin.Context) {
 	id := c.Param("id")
 	var userID uint
 	if _, err := fmt.Sscanf(id, "%d", &userID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный ID пользователя"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgAuthUserNotFound))
 		return
 	}
 
 	var req dto.UpdateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат запроса"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgAuthInvalidRequestFormat))
 		return
 	}
 
@@ -314,10 +315,10 @@ func (h *AuthHandlers) handleUpdateUser(c *gin.Context) {
 	user, err := h.userService.UpdateUser(admin.ID, userID, input)
 	if err != nil {
 		if strings.Contains(err.Error(), "last admin") {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.ErrRateLimited))
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось обновить пользователя"})
+		c.JSON(http.StatusInternalServerError, i18n.ErrorResponse(i18n.MsgAuthUserUpdateFailed))
 		return
 	}
 
@@ -332,7 +333,7 @@ func (h *AuthHandlers) handleUpdateUser(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"user":    dto.ToUserDTO(user),
-		"message": "Пользователь обновлен",
+		"message": i18n.MsgAuthUserUpdated,
 	})
 }
 
@@ -343,22 +344,22 @@ func (h *AuthHandlers) handleDeleteUser(c *gin.Context) {
 	id := c.Param("id")
 	var userID uint
 	if _, err := fmt.Sscanf(id, "%d", &userID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный ID пользователя"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgAuthUserNotFound))
 		return
 	}
 
 	if err := h.userService.DeleteUser(admin.ID, userID); err != nil {
 		if strings.Contains(err.Error(), "last admin") {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.ErrRateLimited))
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось удалить пользователя"})
+		c.JSON(http.StatusInternalServerError, i18n.ErrorResponse(i18n.MsgAuthUserDeleteFailed))
 		return
 	}
 
 	auth.CreateAuditLog(h.db, &admin.ID, domain.ActionDeleteUser, "user", &userID, "")
 
-	c.JSON(http.StatusOK, gin.H{"message": "Пользователь удален"})
+	c.JSON(http.StatusOK, gin.H{"message": i18n.MsgAuthUserDeleted})
 }
 
 // handleResetPassword resets a user's password (admin only)
@@ -368,29 +369,29 @@ func (h *AuthHandlers) handleResetPassword(c *gin.Context) {
 	id := c.Param("id")
 	var userID uint
 	if _, err := fmt.Sscanf(id, "%d", &userID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный ID пользователя"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgAuthUserNotFound))
 		return
 	}
 
 	var req dto.ResetPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат запроса"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgAuthInvalidRequestFormat))
 		return
 	}
 
 	if len(req.NewPassword) < 8 || len(req.NewPassword) > 128 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Пароль должен содержать от 8 до 128 символов"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgAuthPasswordLength))
 		return
 	}
 
 	if err := h.authService.AdminResetPassword(admin.ID, userID, req.NewPassword); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось сбросить пароль"})
+		c.JSON(http.StatusInternalServerError, i18n.ErrorResponse(i18n.MsgAuthPasswordResetFailed))
 		return
 	}
 
 	auth.CreateAuditLog(h.db, &admin.ID, domain.ActionResetPassword, "user", &userID, "")
 
-	c.JSON(http.StatusOK, gin.H{"message": "Пароль сброшен"})
+	c.JSON(http.StatusOK, gin.H{"message": i18n.MsgAuthPasswordResetSuccess})
 }
 
 // handleUpdateProfile updates the current user's profile
@@ -399,13 +400,13 @@ func (h *AuthHandlers) handleUpdateProfile(c *gin.Context) {
 
 	var req dto.UpdateProfileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат запроса"})
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgAuthInvalidRequestFormat))
 		return
 	}
 
 	updatedUser, err := h.userService.UpdateProfile(user.ID, req.DisplayName)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось обновить профиль"})
+		c.JSON(http.StatusInternalServerError, i18n.ErrorResponse(i18n.MsgAuthProfileUpdateFailed))
 		return
 	}
 
@@ -423,7 +424,7 @@ func (h *AuthHandlers) handleAuditLogs(c *gin.Context) {
 
 	logs, total, err := auth.ListAuditLogs(h.db, page, 50)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось получить журнал"})
+		c.JSON(http.StatusInternalServerError, i18n.ErrorResponse(i18n.MsgAuthAuditLogsFailed))
 		return
 	}
 

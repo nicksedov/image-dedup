@@ -67,7 +67,7 @@ export default function App() {
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
           <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <p className="text-sm text-muted-foreground">Загрузка...</p>
+          <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
         </div>
       </div>
     )
@@ -116,12 +116,12 @@ export default function App() {
             {user?.role === "admin" && (
               <TabsTrigger value="admin" className="gap-1.5">
                 <Users className="h-3.5 w-3.5" />
-                Админпанель
+                {t("adminPanel.title")}
               </TabsTrigger>
             )}
             <TabsTrigger value="profile" className="gap-1.5">
               <Shield className="h-3.5 w-3.5" />
-              Профиль
+              {t("adminPanel.updateProfile")}
             </TabsTrigger>
           </TabsList>
 
@@ -140,7 +140,7 @@ export default function App() {
           <TabsContent value="admin">
             {user?.role === "admin" ? <AdminPanel /> : (
               <div className="flex items-center justify-center py-20">
-                <p className="text-muted-foreground">Недостаточно прав</p>
+                <p className="text-muted-foreground">{t("adminPanel.accessDenied")}</p>
               </div>
             )}
           </TabsContent>

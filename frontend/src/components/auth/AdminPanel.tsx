@@ -24,9 +24,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import type { UserDTO, UserRole } from "@/types"
+import { useTranslation } from "@/i18n"
+import { translateApiMessage } from "@/api/client"
 
 export function AdminPanel() {
   const { user: currentUser } = useAuth()
+  const { t } = useTranslation()
   const [users, setUsers] = useState<UserDTO[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -38,7 +41,7 @@ export function AdminPanel() {
       const response = await fetchUsers()
       setUsers(response.users)
     } catch {
-      toast.error("Не удалось загрузить список пользователей")
+      toast.error(t("adminPanel.toastUsersLoadFailed"))
     } finally {
       setIsLoading(false)
     }
@@ -51,7 +54,7 @@ export function AdminPanel() {
   if (currentUser?.role !== "admin") {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-muted-foreground">Доступ запрещен</p>
+        <p className="text-muted-foreground">{t("adminPanel.accessDenied")}</p>
       </div>
     )
   }
@@ -60,12 +63,12 @@ export function AdminPanel() {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Управление пользователями</h2>
-          <p className="text-muted-foreground">Создание и настройка учетных записей</p>
+          <h2 className="text-2xl font-bold">{t("adminPanel.title")}</h2>
+          <p className="text-muted-foreground">{t("adminPanel.description")}</p>
         </div>
         <Button onClick={() => setIsCreateOpen(true)}>
           <UserPlus className="mr-2 h-4 w-4" />
-          Создать пользователя
+          {t("adminPanel.createButton")}
         </Button>
       </div>
 
@@ -77,8 +80,8 @@ export function AdminPanel() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Users className="mb-4 h-12 w-12 text-muted-foreground" />
-            <p className="text-lg font-medium">Нет пользователей</p>
-            <p className="text-sm text-muted-foreground">Создайте первую учетную запись</p>
+            <p className="text-lg font-medium">{t("adminPanel.noUsers")}</p>
+            <p className="text-sm text-muted-foreground">{t("adminPanel.noUsersHint")}</p>
           </CardContent>
         </Card>
       ) : (
@@ -91,22 +94,22 @@ export function AdminPanel() {
               onEdit={() => setEditingUser(u)}
               onResetPassword={() => setResettingUser(u)}
               onDelete={async () => {
-                if (!confirm(`Удалить пользователя "${u.displayName}"?`)) return
+                if (!confirm(t("adminPanel.deleteConfirm", { displayName: u.displayName }))) return
                 try {
                   await deleteUser(u.id)
-                  toast.success("Пользователь удален")
+                  toast.success(t("adminPanel.deleteSuccess"))
                   loadUsers()
                 } catch {
-                  toast.error("Не удалось удалить пользователя")
+                  toast.error(t("adminPanel.deleteFailed"))
                 }
               }}
               onToggleActive={async () => {
                 try {
                   await updateUser(u.id, { isActive: !u.isActive })
-                  toast.success(u.isActive ? "Пользователь деактивирован" : "Пользователь активирован")
+                  toast.success(u.isActive ? t("adminPanel.deactivateSuccess") : t("adminPanel.activateSuccess"))
                   loadUsers()
                 } catch {
-                  toast.error("Не удалось обновить пользователя")
+                  toast.error(t("adminPanel.updateFailed"))
                 }
               }}
             />
@@ -150,17 +153,17 @@ function UserCard({
           <div>
             <p className="font-medium">
               {user.displayName}
-              {isCurrentUser && <span className="ml-2 text-xs text-muted-foreground">(Вы)</span>}
+              {isCurrentUser && <span className="ml-2 text-xs text-muted-foreground">{t("adminPanel.you")}</span>}
             </p>
             <p className="text-sm text-muted-foreground">{user.login}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant={user.role === "admin" ? "default" : "secondary"}>
-            {user.role === "admin" ? "Админ" : "Пользователь"}
+            {user.role === "admin" ? t("adminPanel.roleAdmin") : t("adminPanel.roleUser")}
           </Badge>
           <Badge variant={user.isActive ? "outline" : "destructive"}>
-            {user.isActive ? "Активен" : "Отключен"}
+            {user.isActive ? t("adminPanel.statusActive") : t("adminPanel.statusDisabled")}
           </Badge>
           {!isCurrentUser && (
             <>
@@ -206,14 +209,15 @@ function CreateUserDialog({
     setIsLoading(true)
     try {
       await createUser({ login, displayName, role, password })
-      toast.success("Пользователь создан")
+      toast.success(t("adminPanel.deleteSuccess"))
       setLogin("")
       setDisplayName("")
       setPassword("")
       onOpenChange(false)
       onSuccess()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Не удалось создать пользователя")
+      const errorMessage = err instanceof Error ? translateApiMessage(err.message) : t("adminPanel.create")
+      toast.error(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -223,41 +227,41 @@ function CreateUserDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Создать пользователя</DialogTitle>
-          <DialogDescription>Создайте новую учетную запись для пользователя</DialogDescription>
+          <DialogTitle>{t("adminPanel.createUserTitle")}</DialogTitle>
+          <DialogDescription>{t("adminPanel.createUserDesc")}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="create-login">Логин</Label>
+            <Label htmlFor="create-login">{t("adminPanel.login")}</Label>
             <Input id="create-login" value={login} onChange={(e) => setLogin(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="create-displayName">Отображаемое имя</Label>
+            <Label htmlFor="create-displayName">{t("adminPanel.displayName")}</Label>
             <Input id="create-displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label>Роль</Label>
+            <Label>{t("adminPanel.role")}</Label>
             <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="user">Пользователь</SelectItem>
-                <SelectItem value="admin">Администратор</SelectItem>
+                <SelectItem value="user">{t("adminPanel.roleUser")}</SelectItem>
+                <SelectItem value="admin">{t("adminPanel.adminRole")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="create-password">Временный пароль</Label>
+            <Label htmlFor="create-password">{t("adminPanel.tempPassword")}</Label>
             <Input id="create-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Отмена
+              {t("adminPanel.cancel")}
             </Button>
             <Button type="submit" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Создать
+              {t("adminPanel.create")}
             </Button>
           </DialogFooter>
         </form>
@@ -287,11 +291,12 @@ function EditUserDialog({
     setIsLoading(true)
     try {
       await updateUser(user.id, { displayName, role, isActive })
-      toast.success("Пользователь обновлен")
+      toast.success(t("adminPanel.profileUpdated"))
       onSuccess()
       onClose()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Не удалось обновить пользователя")
+      const errorMessage = err instanceof Error ? translateApiMessage(err.message) : t("adminPanel.updateFailed")
+      toast.error(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -301,27 +306,27 @@ function EditUserDialog({
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Редактировать пользователя</DialogTitle>
-          <DialogDescription>Измените данные учетной записи</DialogDescription>
+          <DialogTitle>{t("adminPanel.editUserTitle")}</DialogTitle>
+          <DialogDescription>{t("adminPanel.editUserDesc")}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label>Логин</Label>
+            <Label>{t("adminPanel.login")}</Label>
             <Input value={user.login} disabled />
           </div>
           <div className="space-y-2">
-            <Label>Отображаемое имя</Label>
+            <Label>{t("adminPanel.displayName")}</Label>
             <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label>Роль</Label>
+            <Label>{t("adminPanel.role")}</Label>
             <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="user">Пользователь</SelectItem>
-                <SelectItem value="admin">Администратор</SelectItem>
+                <SelectItem value="user">{t("adminPanel.roleUser")}</SelectItem>
+                <SelectItem value="admin">{t("adminPanel.adminRole")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -333,15 +338,15 @@ function EditUserDialog({
               onChange={(e) => setIsActive(e.target.checked)}
               className="h-4 w-4"
             />
-            <Label htmlFor="isActive">Активен</Label>
+            <Label htmlFor="isActive">{t("adminPanel.statusActive")}</Label>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
-              Отмена
+              {t("adminPanel.cancel")}
             </Button>
             <Button type="submit" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Сохранить
+              {t("adminPanel.save")}
             </Button>
           </DialogFooter>
         </form>
@@ -367,10 +372,11 @@ function ResetPasswordDialog({
     setIsLoading(true)
     try {
       await resetUserPassword(user.id, { newPassword })
-      toast.success("Пароль сброшен")
+      toast.success(t("adminPanel.resetPasswordSuccess"))
       onClose()
-    } catch {
-      toast.error("Не удалось сбросить пароль")
+    } catch (err) {
+      const errorMessage = err instanceof Error ? translateApiMessage(err.message) : t("adminPanel.resetPasswordFailed")
+      toast.error(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -380,27 +386,27 @@ function ResetPasswordDialog({
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Сброс пароля</DialogTitle>
-          <DialogDescription>Сбросьте пароль для пользователя {user.displayName}</DialogDescription>
+          <DialogTitle>{t("adminPanel.resetPasswordTitle")}</DialogTitle>
+          <DialogDescription>{t("adminPanel.resetPasswordDesc", { displayName: user.displayName })}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="reset-password">Новый пароль</Label>
+            <Label htmlFor="reset-password">{t("adminPanel.newPassword")}</Label>
             <Input
               id="reset-password"
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
             />
-            <p className="text-xs text-muted-foreground">Минимум 8 символов</p>
+            <p className="text-xs text-muted-foreground">{t("adminPanel.minPasswordLength")}</p>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
-              Отмена
+              {t("adminPanel.cancel")}
             </Button>
             <Button type="submit" disabled={isLoading || newPassword.length < 8}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Сбросить пароль
+              {t("adminPanel.resetPassword")}
             </Button>
           </DialogFooter>
         </form>

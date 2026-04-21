@@ -39,6 +39,7 @@ type FileDTO struct {
 // --- Scan API ---
 
 // ScanResponse is the JSON response for POST /api/scan
+// Message is a i18n key string (e.g., "scan.started")
 type ScanResponse struct {
 	Message string `json:"message"`
 }
@@ -123,13 +124,15 @@ type AddFolderRequest struct {
 }
 
 // AddFolderResponse is the JSON response for POST /api/folders
+// Message is a i18n key string (e.g., "folder.added")
 type AddFolderResponse struct {
-	Message     string           `json:"message"`
+	Message     string `json:"message"`
 	Folder      GalleryFolderDTO `json:"folder"`
 	ScanStarted bool             `json:"scanStarted"`
 }
 
 // RemoveFolderResponse is the JSON response for DELETE /api/folders/:id
+// Message is a i18n key string (e.g., "folder.removed")
 type RemoveFolderResponse struct {
 	Message      string `json:"message"`
 	FilesRemoved int    `json:"filesRemoved"`

@@ -26,7 +26,7 @@ export function Header() {
                 <User className="h-4 w-4" />
                 <span className="text-sm font-medium">{user.displayName}</span>
                 <Badge variant="secondary" className="text-xs">
-                  {user.role === "admin" ? "Админ" : "Пользователь"}
+                  {user.role === "admin" ? t("adminPanel.roleAdmin") : t("adminPanel.roleUser")}
                 </Badge>
               </div>
               <Button
@@ -36,7 +36,7 @@ export function Header() {
                 className="text-white hover:bg-white/20 hover:text-white"
               >
                 <LogOut className="mr-1.5 h-4 w-4" />
-                Выход
+                {t("adminPanel.logout")}
               </Button>
             </div>
           )}
