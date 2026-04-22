@@ -524,8 +524,8 @@ func (s *Server) handleGetGalleryImages(c *gin.Context) {
 		}
 	}
 
-	// Generate thumbnails in parallel if thumbnail view
-	if view == "thumbnails" && len(files) > 0 {
+	// Generate thumbnails in parallel if thumbnail or folders view
+	if (view == "thumbnails" || view == "folders") && len(files) > 0 {
 		const maxWorkers = 16
 		var wg sync.WaitGroup
 		semaphore := make(chan struct{}, maxWorkers)
