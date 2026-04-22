@@ -13,7 +13,7 @@ import { triggerScan, fetchTrashInfo, cleanTrash, updateSettings } from "@/api/e
 import { useSettings } from "@/providers/useSettings"
 import { useAuth } from "@/providers/AuthProvider"
 import { RefreshCw, Trash2, Sun, Moon, Globe } from "lucide-react"
-import { useTranslation } from "@/i18n"
+import { useTranslation, type TranslationKey } from "@/i18n"
 
 interface SettingsTabProps {
   onFolderAdded: () => void
@@ -115,7 +115,7 @@ export function SettingsTab({ onFolderAdded }: SettingsTabProps) {
       try {
         const result = await add(path)
         const message = result.message as string
-        toast.success(message.includes(".") ? t(message as any) : message)
+        toast.success(message.includes(".") ? t(message as TranslationKey) : message)
         if (result.scanStarted) {
           setOnScanComplete(() => {
             refetch()
@@ -136,7 +136,7 @@ export function SettingsTab({ onFolderAdded }: SettingsTabProps) {
       try {
         const result = await remove(id)
         const message = result.message as string
-        toast.success(t("settings.toastFilesRemoved", { message: message.includes(".") ? t(message as any) : message, count: result.filesRemoved }))
+        toast.success(t("settings.toastFilesRemoved", { message: message.includes(".") ? t(message as TranslationKey) : message, count: result.filesRemoved }))
       } catch (err) {
         toast.error(err instanceof Error ? err.message : t("settings.toastRemoveFailed"))
       }

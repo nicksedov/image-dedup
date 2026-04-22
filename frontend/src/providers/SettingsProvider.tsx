@@ -13,13 +13,12 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
   const [theme, setThemeState] = useState<Theme>("light")
   const [language, setLanguageState] = useState<Language>("en")
   const [trashDir, setTrashDirState] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { isAuthenticated } = useAuth()
+  const [isLoading, setIsLoading] = useState(!isAuthenticated)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!isAuthenticated) {
-      setIsLoading(false)
       return
     }
     
