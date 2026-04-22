@@ -1,8 +1,8 @@
 export const translations = {
   en: {
     // Header
-    "header.title": "Image Dedup",
-    "header.subtitle": "Manage duplicate images in your media library",
+    "header.title": "Image Toolkit",
+    "header.subtitle": "All-in-one toolkit for image management",
     "header.toggleTheme": "Toggle theme",
     "header.toggleLanguage": "Toggle language",
 
@@ -19,6 +19,12 @@ export const translations = {
     // Settings tab
     "settings.title": "Gallery",
     "settings.description": "Manage the folders included in your image gallery. Adding a folder will automatically start scanning it for images.",
+    "settings.preferences": "Preferences",
+    "settings.preferencesDescription": "Customize your experience",
+    "settings.theme": "Theme",
+    "settings.lightTheme": "Light",
+    "settings.darkTheme": "Dark",
+    "settings.language": "Language",
     "settings.rescanAll": "Rescan All",
     "settings.folderCount": "{count} folder(s) in gallery",
     "settings.folderCountOne": "{count} folder in gallery",
@@ -370,6 +376,12 @@ export const translations = {
     // Settings tab
     "settings.title": "Галерея",
     "settings.description": "Управление папками, включёнными в вашу галерею изображений. Добавление папки автоматически запустит сканирование.",
+    "settings.preferences": "Настройки",
+    "settings.preferencesDescription": "Персонализируйте свой опыт",
+    "settings.theme": "Тема",
+    "settings.lightTheme": "Светлая",
+    "settings.darkTheme": "Темная",
+    "settings.language": "Язык",
     "settings.rescanAll": "Сканировать все",
     "settings.folderCount": "{count} папок в галерее",
     "settings.folderCountOne": "{count} папка в галерее",

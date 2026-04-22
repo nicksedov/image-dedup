@@ -3,6 +3,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { AddFolderForm } from "@/components/settings/AddFolderForm"
 import { FolderList } from "@/components/settings/FolderList"
 import { ScanProgressBanner } from "@/components/ScanProgressBanner"
@@ -10,8 +11,9 @@ import { useGalleryFolders } from "@/hooks/useGalleryFolders"
 import { useScanStatus } from "@/hooks/useScanStatus"
 import { triggerScan, fetchTrashInfo, cleanTrash, updateSettings } from "@/api/endpoints"
 import { useSettings } from "@/providers/useSettings"
-import { RefreshCw, Trash2 } from "lucide-react"
+import { RefreshCw, Trash2, Sun, Moon } from "lucide-react"
 import { useTranslation } from "@/i18n"
+import { useTheme } from "@/theme"
 
 interface SettingsTabProps {
   onFolderAdded: () => void
@@ -20,8 +22,9 @@ interface SettingsTabProps {
 export function SettingsTab({ onFolderAdded }: SettingsTabProps) {
   const { folders, isLoading, add, remove, refetch } = useGalleryFolders()
   const { status, startPolling, setOnScanComplete } = useScanStatus()
-  const { trashDir, setTrashDir } = useSettings()
+  const { trashDir, setTrashDir, theme, setTheme, language, setLanguage } = useSettings()
   const { t } = useTranslation()
+  const { getThemeName } = useTheme()
 
   const [trashInput, setTrashInput] = useState(trashDir)
   const [trashFileCount, setTrashFileCount] = useState(0)
@@ -63,6 +66,14 @@ export function SettingsTab({ onFolderAdded }: SettingsTabProps) {
       setIsSavingTrash(false)
     }
   }, [trashInput, setTrashDir, loadTrashInfo, t])
+
+  const handleSaveTheme = useCallback((value: string) => {
+    setTheme(value as "light" | "dark")
+  }, [setTheme])
+
+  const handleSaveLanguage = useCallback((value: string) => {
+    setLanguage(value as "en" | "ru")
+  }, [setLanguage])
 
   const handleCleanTrash = useCallback(async () => {
     if (trashFileCount === 0) return
@@ -139,6 +150,54 @@ export function SettingsTab({ onFolderAdded }: SettingsTabProps) {
         <p className="text-sm text-muted-foreground">
           {t("settings.description")}
         </p>
+      </div>
+
+      {/* Theme and Language Settings */}
+      <div className="border rounded-lg p-6">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold mb-1">{t("settings.preferences")}</h2>
+          <p className="text-sm text-muted-foreground">
+            {t("settings.preferencesDescription")}
+          </p>
+        </div>
+
+        <div className="space-y-6">
+          {/* Theme Settings */}
+          <div className="space-y-3">
+            <Label>{t("settings.theme")}</Label>
+            <RadioGroup value={theme} onValueChange={handleSaveTheme} className="flex gap-4">
+              <div className="flex items-center space-x-2 rounded-md border p-3 cursor-pointer hover:bg-accent transition-colors">
+                <RadioGroupItem value="light" id="theme-light" />
+                <div className="flex items-center gap-2">
+                  <Sun className="h-5 w-5 text-yellow-500" />
+                  <span className="text-sm font-medium">{t("settings.lightTheme")}</span>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2 rounded-md border p-3 cursor-pointer hover:bg-accent transition-colors">
+                <RadioGroupItem value="dark" id="theme-dark" />
+                <div className="flex items-center gap-2">
+                  <Moon className="h-5 w-5 text-blue-400" />
+                  <span className="text-sm font-medium">{t("settings.darkTheme")}</span>
+                </div>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {/* Language Settings */}
+          <div className="space-y-3">
+            <Label>{t("settings.language")}</Label>
+            <RadioGroup value={language} onValueChange={handleSaveLanguage} className="flex gap-4">
+              <div className="flex items-center space-x-2 rounded-md border p-3 cursor-pointer hover:bg-accent transition-colors">
+                <RadioGroupItem value="en" id="lang-en" />
+                <span className="text-sm font-medium">English</span>
+              </div>
+              <div className="flex items-center space-x-2 rounded-md border p-3 cursor-pointer hover:bg-accent transition-colors">
+                <RadioGroupItem value="ru" id="lang-ru" />
+                <span className="text-sm font-medium">Русский</span>
+              </div>
+            </RadioGroup>
+          </div>
+        </div>
       </div>
 
       <AddFolderForm onAdd={handleAdd} disabled={status.scanning} />

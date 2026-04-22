@@ -171,6 +171,13 @@ type AppSettingsDTO struct {
 	TrashDir string `json:"trashDir"`
 }
 
+// UserSettingsDTO is the JSON response for user settings
+type UserSettingsDTO struct {
+	Theme    string `json:"theme"`
+	Language string `json:"language"`
+	TrashDir string `json:"trashDir"`
+}
+
 // UpdateSettingsRequest is the JSON request for PUT /api/settings
 type UpdateSettingsRequest struct {
 	Theme    string  `json:"theme"`

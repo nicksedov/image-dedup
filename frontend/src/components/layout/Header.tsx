@@ -1,6 +1,4 @@
 import { useTranslation } from "@/i18n"
-import { ThemeToggle } from "./ThemeToggle"
-import { LanguageToggle } from "./LanguageToggle"
 import { useAuth } from "@/providers/AuthProvider"
 import { LogOut, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -21,7 +19,7 @@ export function Header() {
         </div>
         <div className="flex items-center gap-2">
           {user && (
-            <div className="flex items-center gap-3 mr-2">
+            <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 rounded-lg bg-white/10 px-3 py-1.5">
                 <User className="h-4 w-4" />
                 <span className="text-sm font-medium">{user.displayName}</span>
@@ -40,8 +38,6 @@ export function Header() {
               </Button>
             </div>
           )}
-          <ThemeToggle />
-          <LanguageToggle />
         </div>
       </div>
     </header>

@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from "react"
 import { Toaster } from "sonner"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Header } from "@/components/layout/Header"
+import { Tabs, TabsContent } from "@/components/ui/tabs"
+import { Sidebar } from "@/components/layout/Sidebar"
 import { SettingsTab } from "@/components/tabs/SettingsTab"
 import { GalleryTab } from "@/components/tabs/GalleryTab"
 import { DeduplicationTab } from "@/components/tabs/DeduplicationTab"
 import { fetchFolders } from "@/api/endpoints"
-import { Settings, ImageIcon, FileScan, Shield, Users } from "lucide-react"
 import { useTranslation } from "@/i18n"
 import { useSettings } from "@/providers/useSettings"
 import { useAuth } from "@/providers/AuthProvider"
@@ -94,62 +93,45 @@ export default function App() {
   // Bootstrap setup redirect (handled by backend redirect, but we can also show a message)
   // This case should typically be handled via the bootstrap login flow
 
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab as TabValue)
+  }
+
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
+    <div className="flex min-h-screen bg-background">
+      <Sidebar activeTab={activeTab} onTabChange={handleTabChange} />
 
-      <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabValue)}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="deduplication" className="gap-1.5">
-              <FileScan className="h-3.5 w-3.5" />
-              {t("tabs.deduplication")}
-            </TabsTrigger>
-            <TabsTrigger value="gallery" className="gap-1.5">
-              <ImageIcon className="h-3.5 w-3.5" />
-              {t("tabs.gallery")}
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="gap-1.5">
-              <Settings className="h-3.5 w-3.5" />
-              {t("tabs.settings")}
-            </TabsTrigger>
-            {user?.role === "admin" && (
-              <TabsTrigger value="admin" className="gap-1.5">
-                <Users className="h-3.5 w-3.5" />
-                {t("adminPanel.title")}
-              </TabsTrigger>
-            )}
-            <TabsTrigger value="profile" className="gap-1.5">
-              <Shield className="h-3.5 w-3.5" />
-              {t("adminPanel.updateProfile")}
-            </TabsTrigger>
-          </TabsList>
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <main className="flex-1 overflow-auto px-8 py-6">
+          <div className="mx-auto max-w-7xl">
+            <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v)}>
+              <TabsContent value="settings">
+                <SettingsTab onFolderAdded={handleFolderAdded} />
+              </TabsContent>
 
-          <TabsContent value="settings">
-            <SettingsTab onFolderAdded={handleFolderAdded} />
-          </TabsContent>
+              <TabsContent value="gallery">
+                <GalleryTab />
+              </TabsContent>
 
-          <TabsContent value="gallery">
-            <GalleryTab />
-          </TabsContent>
+              <TabsContent value="deduplication">
+                <DeduplicationTab />
+              </TabsContent>
 
-          <TabsContent value="deduplication">
-            <DeduplicationTab />
-          </TabsContent>
+              <TabsContent value="admin">
+                {user?.role === "admin" ? <AdminPanel /> : (
+                  <div className="flex items-center justify-center py-20">
+                    <p className="text-muted-foreground">{t("adminPanel.accessDenied")}</p>
+                  </div>
+                )}
+              </TabsContent>
 
-          <TabsContent value="admin">
-            {user?.role === "admin" ? <AdminPanel /> : (
-              <div className="flex items-center justify-center py-20">
-                <p className="text-muted-foreground">{t("adminPanel.accessDenied")}</p>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="profile">
-            <UserProfile />
-          </TabsContent>
-        </Tabs>
-      </main>
+              <TabsContent value="profile">
+                <UserProfile />
+              </TabsContent>
+            </Tabs>
+          </div>
+        </main>
+      </div>
 
       <Toaster richColors position="top-right" />
     </div>

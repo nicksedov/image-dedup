@@ -144,6 +144,12 @@ export interface AppSettingsDTO {
   trashDir: string
 }
 
+export interface UserSettingsDTO {
+  theme: "light" | "dark"
+  language: "en" | "ru"
+  trashDir: string
+}
+
 export interface UpdateSettingsRequest {
   theme?: "light" | "dark"
   language?: "en" | "ru"

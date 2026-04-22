@@ -31,6 +31,7 @@ func InitDatabase(cfg *config.AppConfig) (*gorm.DB, error) {
 		&domain.AppSettings{},
 		&domain.ImageMetadata{},
 		&domain.User{},
+		&domain.UserSettings{},
 		&domain.Session{},
 		&domain.AuditLog{},
 	); err != nil {

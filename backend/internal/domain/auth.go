@@ -26,6 +26,17 @@ type User struct {
 	LastLoginAt        *time.Time `json:"lastLoginAt"`
 }
 
+// UserSettings represents user-specific application settings
+type UserSettings struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	UserID    uint      `gorm:"uniqueIndex;not null" json:"userId"`
+	Theme     string    `gorm:"default:light;not null" json:"theme"`
+	Language  string    `gorm:"default:en;not null" json:"language"`
+	TrashDir  string    `gorm:"default:''" json:"trashDir"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
 // Session represents an active user session
 type Session struct {
 	ID           uint       `gorm:"primaryKey" json:"id"`

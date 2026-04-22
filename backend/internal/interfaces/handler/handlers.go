@@ -14,6 +14,7 @@ import (
 	"image-toolkit/internal/domain"
 	"image-toolkit/internal/interfaces/dto"
 	"image-toolkit/internal/interfaces/i18n"
+	"image-toolkit/internal/interfaces/middleware"
 
 	"github.com/gin-gonic/gin"
 )
@@ -666,6 +667,103 @@ func (s *Server) handleUpdateSettings(c *gin.Context) {
 	s.db.Save(&settings)
 
 	c.JSON(http.StatusOK, dto.AppSettingsDTO{
+		Theme:    settings.Theme,
+		Language: settings.Language,
+		TrashDir: settings.TrashDir,
+	})
+}
+
+// --- User Settings Handlers ---
+
+// handleGetUserSettings returns the current user's settings
+func (s *Server) handleGetUserSettings(c *gin.Context) {
+	user := middleware.GetCurrentUser(c)
+	if user == nil {
+		c.JSON(http.StatusUnauthorized, i18n.ErrorResponse(i18n.MsgAuthUnauthorized))
+		return
+	}
+
+	var settings domain.UserSettings
+	if result := s.db.FirstOrCreate(&settings, domain.UserSettings{UserID: user.ID}); result.Error != nil {
+		c.JSON(http.StatusInternalServerError, i18n.ErrorResponse(i18n.MsgAuthInternalError))
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.UserSettingsDTO{
+		Theme:    settings.Theme,
+		Language: settings.Language,
+		TrashDir: settings.TrashDir,
+	})
+}
+
+// handleUpdateUserSettings updates the current user's settings
+func (s *Server) handleUpdateUserSettings(c *gin.Context) {
+	user := middleware.GetCurrentUser(c)
+	if user == nil {
+		c.JSON(http.StatusUnauthorized, i18n.ErrorResponse(i18n.MsgAuthUnauthorized))
+		return
+	}
+
+	var req dto.UpdateSettingsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, i18n.CreateValidationError(i18n.ValidationError))
+		return
+	}
+
+	validThemes := map[string]bool{"light": true, "dark": true}
+	validLanguages := map[string]bool{"en": true, "ru": true}
+
+	if req.Theme != "" && !validThemes[req.Theme] {
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgImageInvalidTheme))
+		return
+	}
+	if req.Language != "" && !validLanguages[req.Language] {
+		c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgImageInvalidLanguage))
+		return
+	}
+
+	var settings domain.UserSettings
+	result := s.db.FirstOrCreate(&settings, domain.UserSettings{UserID: user.ID})
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, i18n.ErrorResponse(i18n.MsgAuthInternalError))
+		return
+	}
+
+	if req.Theme != "" {
+		settings.Theme = req.Theme
+	}
+	if req.Language != "" {
+		settings.Language = req.Language
+	}
+	if req.TrashDir != nil {
+		newTrashDir := strings.TrimSpace(*req.TrashDir)
+		if newTrashDir != "" {
+			// Normalize the trash dir path
+			absTrash, err := filepath.Abs(newTrashDir)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgImageInvalidTrashPath))
+				return
+			}
+			normalizedTrash := filepath.ToSlash(absTrash)
+
+			// Check conflict with all gallery folders
+			var galleryFolders []domain.GalleryFolder
+			s.db.Find(&galleryFolders)
+			for _, gf := range galleryFolders {
+				if reason := pathsConflict(normalizedTrash, gf.Path); reason != "" {
+					c.JSON(http.StatusBadRequest, i18n.ErrorResponse(i18n.MsgImageTrashConflict))
+					return
+				}
+			}
+			settings.TrashDir = normalizedTrash
+		} else {
+			settings.TrashDir = ""
+		}
+	}
+
+	s.db.Save(&settings)
+
+	c.JSON(http.StatusOK, dto.UserSettingsDTO{
 		Theme:    settings.Theme,
 		Language: settings.Language,
 		TrashDir: settings.TrashDir,

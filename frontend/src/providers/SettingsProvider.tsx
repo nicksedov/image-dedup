@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { ThemeProvider, type Theme } from "@/theme"
 import { I18nProvider, type Language } from "@/i18n"
-import { fetchSettings, updateSettings } from "@/api/endpoints"
+import { fetchSettings, updateSettings, fetchUserSettings, updateUserSettings } from "@/api/endpoints"
 import { SettingsContext } from "./settingsContext"
 import { useAuth } from "./AuthProvider"
 
@@ -22,16 +22,23 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       setIsLoading(false)
       return
     }
-    fetchSettings()
-      .then((settings) => {
-        setThemeState(settings.theme)
-        setLanguageState(settings.language)
-        setTrashDirState(settings.trashDir || "")
-      })
-      .catch(() => {
-        // Use defaults on failure
-      })
-      .finally(() => setIsLoading(false))
+    
+    // Load user settings first, fallback to global settings
+    Promise.all([
+      fetchUserSettings().catch(() => null),
+      fetchSettings().catch(() => null),
+    ]).then(([userSettings, globalSettings]) => {
+      // Prefer user settings, fallback to global settings
+      const effectiveTheme = userSettings?.theme || globalSettings?.theme || "light"
+      const effectiveLanguage = userSettings?.language || globalSettings?.language || "en"
+      const effectiveTrashDir = userSettings?.trashDir || globalSettings?.trashDir || ""
+      
+      setThemeState(effectiveTheme)
+      setLanguageState(effectiveLanguage)
+      setTrashDirState(effectiveTrashDir)
+    }).catch(() => {
+      // Use defaults on failure
+    }).finally(() => setIsLoading(false))
   }, [isAuthenticated])
 
   const persistSettings = useCallback((newTheme: Theme, newLanguage: Language, newTrashDir?: string) => {
@@ -46,7 +53,7 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
       if (newTrashDir !== undefined) {
         req.trashDir = newTrashDir
       }
-      updateSettings(req).catch(() => {
+      updateUserSettings(req).catch(() => {
         // Silently fail - UI already updated
       })
     }, 300)

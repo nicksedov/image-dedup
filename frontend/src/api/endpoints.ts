@@ -15,6 +15,7 @@ import type {
   RemoveFolderResponse,
   GalleryImagesResponse,
   AppSettingsDTO,
+  UserSettingsDTO,
   UpdateSettingsRequest,
   TrashInfoResponse,
   CleanTrashResponse,
@@ -100,6 +101,16 @@ export function fetchSettings(): Promise<AppSettingsDTO> {
 
 export function updateSettings(req: UpdateSettingsRequest): Promise<AppSettingsDTO> {
   return apiPut<AppSettingsDTO>("/api/settings", req)
+}
+
+// --- User Settings ---
+
+export function fetchUserSettings(): Promise<UserSettingsDTO> {
+  return apiGet<UserSettingsDTO>("/api/user-settings")
+}
+
+export function updateUserSettings(req: UpdateSettingsRequest): Promise<UserSettingsDTO> {
+  return apiPut<UserSettingsDTO>("/api/user-settings", req)
 }
 
 // --- Trash ---
