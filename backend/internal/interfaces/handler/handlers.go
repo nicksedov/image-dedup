@@ -952,7 +952,7 @@ func (s *Server) handleGetGalleryCalendar(c *gin.Context) {
 	// Paginate
 	offset := (page - 1) * pageSize
 	var results []imageWithDate
-	query.Order("image_metadata.date_taken DESC").Offset(offset).Limit(pageSize).Find(&results)
+	query.Order("image_metadata.date_taken ASC").Offset(offset).Limit(pageSize).Find(&results)
 
 	// Group by date
 	type dateGroup struct {

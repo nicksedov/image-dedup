@@ -31,12 +31,12 @@ export function GalleryCalendarView({ onImageClick }: GalleryCalendarViewProps) 
 
   // Calendar widget state
   const [calendarViewDate, setCalendarViewDate] = useState(() => {
-    // Default to the month of the latest image (maxDate) if available
     return new Date()
   })
 
   const pageRef = useRef(1)
   const sentinelRef = useRef<HTMLDivElement>(null)
+  const mainContentRef = useRef<HTMLDivElement>(null)
 
   const calendarMonthKey = useMemo(() => {
     const y = calendarViewDate.getFullYear()
@@ -69,10 +69,10 @@ export function GalleryCalendarView({ onImageClick }: GalleryCalendarViewProps) 
       // Update date range on first load
       if (page === 1) {
         setDateRange(result.dateRange)
-        // Set calendar to the month of the latest image if not filtered
-        if (!dateFilter.start && result.dateRange.maxDate) {
-          const maxDate = new Date(result.dateRange.maxDate + "T00:00:00")
-          setCalendarViewDate(new Date(maxDate.getFullYear(), maxDate.getMonth(), 1))
+        // Set calendar to the month of the oldest image (minDate) if not filtered
+        if (!dateFilter.start && result.dateRange.minDate) {
+          const minDate = new Date(result.dateRange.minDate + "T00:00:00")
+          setCalendarViewDate(new Date(minDate.getFullYear(), minDate.getMonth(), 1))
         }
       }
 
@@ -101,7 +101,6 @@ export function GalleryCalendarView({ onImageClick }: GalleryCalendarViewProps) 
 
   // Load month info when calendar month changes
   useEffect(() => {
-    // Fetch just the month info for the calendar widget
     fetchGalleryCalendar(1, 1, dateFilter.start ?? undefined, dateFilter.end ?? undefined, calendarMonthKey)
       .then((result) => {
         if (result.months.length > 0) {
@@ -129,42 +128,27 @@ export function GalleryCalendarView({ onImageClick }: GalleryCalendarViewProps) 
     return () => observer.disconnect()
   }, [hasMore, isLoading, loadPage])
 
-  // Calendar days computation
+  // Horizontal calendar: generate all days of the month as a scrollable strip
   const calendarDays = useMemo(() => {
     const year = calendarViewDate.getFullYear()
     const month = calendarViewDate.getMonth()
-    const firstDay = new Date(year, month, 1)
     const lastDay = new Date(year, month + 1, 0)
-    const startDay = firstDay.getDay()
     const daysInMonth = lastDay.getDate()
-
-    const days: { date: string; day: number; hasImages: boolean; isCurrentMonth: boolean }[] = []
-
-    // Adjust for Monday start
-    const adjustedStart = startDay === 0 ? 6 : startDay - 1
-
-    for (let i = 0; i < adjustedStart; i++) {
-      days.push({ date: "", day: 0, hasImages: false, isCurrentMonth: false })
-    }
 
     const daysWithImages = new Set(monthInfo?.days ?? [])
 
+    const days: { date: string; day: number; hasImages: boolean }[] = []
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`
       days.push({
         date: dateStr,
         day: d,
         hasImages: daysWithImages.has(d),
-        isCurrentMonth: true,
       })
     }
 
     return days
   }, [calendarViewDate, monthInfo])
-
-  const weekDays = useMemo(() => {
-    return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-  }, [])
 
   const prevMonth = () => {
     setCalendarViewDate(new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth() - 1, 1))
@@ -176,7 +160,6 @@ export function GalleryCalendarView({ onImageClick }: GalleryCalendarViewProps) 
 
   const selectDate = (date: string) => {
     if (dateFilter.start === date && dateFilter.end === date) {
-      // Toggle off
       setDateFilter({ start: null, end: null })
     } else {
       setDateFilter({ start: date, end: date })
@@ -211,9 +194,9 @@ export function GalleryCalendarView({ onImageClick }: GalleryCalendarViewProps) 
         </span>
       </div>
 
-      {/* Calendar Widget */}
-      <div className="rounded-lg border bg-card p-4">
-        <div className="flex items-center justify-between mb-3">
+      {/* Horizontal Calendar Widget */}
+      <div className="rounded-lg border bg-card p-3">
+        <div className="flex items-center justify-between mb-2">
           <button onClick={prevMonth} className="p-1 hover:bg-muted rounded">
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -225,37 +208,28 @@ export function GalleryCalendarView({ onImageClick }: GalleryCalendarViewProps) 
           </button>
         </div>
 
-        {/* Week day headers */}
-        <div className="grid grid-cols-7 gap-px mb-1">
-          {weekDays.map((day) => (
-            <div key={day} className="text-center text-xs text-muted-foreground py-1">
-              {day}
-            </div>
-          ))}
-        </div>
-
-        {/* Calendar grid */}
-        <div className="grid grid-cols-7 gap-px">
-          {calendarDays.map((day, idx) => (
+        {/* Horizontal scrollable day strip */}
+        <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-thin" style={{ scrollbarWidth: "thin" }}>
+          {calendarDays.map((day) => (
             <button
-              key={idx}
-              disabled={!day.isCurrentMonth || !day.date}
+              key={day.date}
+              disabled={!day.date}
               className={`
-                aspect-square flex items-center justify-center text-xs rounded-sm
-                ${!day.isCurrentMonth ? "invisible" : ""}
-                ${day.hasImages && day.date ? "bg-primary/10 hover:bg-primary/20 font-medium text-primary cursor-pointer" : "text-muted-foreground/50"}
+                flex-shrink-0 w-9 h-9 flex flex-col items-center justify-center text-xs rounded-md
+                transition-all
+                ${day.hasImages ? "bg-primary/10 hover:bg-primary/20 font-medium text-primary cursor-pointer" : "text-muted-foreground/40"}
                 ${dateFilter.start === day.date && dateFilter.end === day.date ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""}
               `}
-              onClick={() => day.date && selectDate(day.date)}
+              onClick={() => selectDate(day.date)}
             >
-              {day.day}
+              <span className="text-[11px] leading-none">{day.day}</span>
             </button>
           ))}
         </div>
 
         {/* Date filter controls */}
         {(dateFilter.start || dateFilter.end) && (
-          <div className="mt-3 pt-3 border-t flex items-center justify-between">
+          <div className="mt-2 pt-2 border-t flex items-center justify-between">
             <span className="text-xs text-muted-foreground">
               {dateFilter.start === dateFilter.end
                 ? dateFilter.start
@@ -272,9 +246,9 @@ export function GalleryCalendarView({ onImageClick }: GalleryCalendarViewProps) 
       </div>
 
       {/* Main content area with images and timeline */}
-      <div className="flex gap-4">
+      <div className="flex gap-4" style={{ position: "relative" }}>
         {/* Images area */}
-        <div className="flex-1 min-w-0">
+        <div ref={mainContentRef} className="flex-1 min-w-0">
           {error && (
             <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
               {error}
@@ -355,12 +329,18 @@ export function GalleryCalendarView({ onImageClick }: GalleryCalendarViewProps) 
           )}
         </div>
 
-        {/* Timeline sidebar */}
+        {/* Timeline sidebar — fixed to right edge, full viewport height */}
         {dateRange.minDate && dateRange.maxDate && groups.length > 0 && (
-          <div className="w-16 flex-shrink-0 hidden lg:block">
-            <div className="sticky top-20 rounded-lg border bg-card p-2">
+          <div
+            className="fixed right-0 top-0 bottom-0 w-16 z-10 hidden lg:flex flex-col justify-center"
+            style={{ pointerEvents: "none" }}
+          >
+            <div
+              className="rounded-l-lg border-r border-y bg-card p-2 mx-0"
+              style={{ pointerEvents: "auto", height: "calc(100vh - 2rem)", maxHeight: "calc(100vh - 2rem)" }}
+            >
               <div className="text-xs font-medium mb-2 text-center">{t("gallery.calendar.timeline")}</div>
-              <div className="relative h-64">
+              <div className="relative flex-1" style={{ height: "calc(100% - 2rem)" }}>
                 {/* Timeline track */}
                 <div className="absolute left-1/2 -translate-x-1/2 w-0.5 h-full bg-muted" />
 
@@ -401,14 +381,14 @@ export function GalleryCalendarView({ onImageClick }: GalleryCalendarViewProps) 
                   )
                 })}
 
-                {/* Min date label (latest - top since sorted DESC) */}
+                {/* Oldest date label (top since ASC order) */}
                 <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] text-muted-foreground whitespace-nowrap">
-                  {formatShortDate(dateRange.maxDate)}
+                  {formatShortDate(dateRange.minDate)}
                 </div>
 
-                {/* Max date label (oldest - bottom) */}
+                {/* Newest date label (bottom) */}
                 <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] text-muted-foreground whitespace-nowrap">
-                  {formatShortDate(dateRange.minDate)}
+                  {formatShortDate(dateRange.maxDate)}
                 </div>
               </div>
             </div>
