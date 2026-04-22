@@ -1041,12 +1041,12 @@ func (s *Server) handleGetGalleryCalendar(c *gin.Context) {
 			month := int(t.Month())
 			nextMonth := t.AddDate(0, 1, 0)
 
-			// Get distinct days that have images in this month
+			// Get distinct days that have images in this month (PostgreSQL)
 			var days []int
 			s.db.Raw(`
-				SELECT DISTINCT CAST(strftime('%d', date_taken) AS INTEGER) as day
+				SELECT DISTINCT CAST(EXTRACT(DAY FROM date_taken) AS INTEGER) as day
 				FROM image_metadata
-				WHERE date_taken >= ? AND date_taken < ? AND date_taken IS NOT NULL
+				WHERE date_taken >= $1 AND date_taken < $2 AND date_taken IS NOT NULL
 				ORDER BY day
 			`, t, nextMonth).Pluck("day", &days)
 
@@ -1091,7 +1091,7 @@ func (s *Server) handleGetCalendarMonthInfo(c *gin.Context) {
 	month := int(t.Month())
 	nextMonth := t.AddDate(0, 1, 0)
 
-	// Get day-level counts: how many images per day in this month
+	// Get day-level counts: how many images per day in this month (PostgreSQL)
 	type dayCount struct {
 		Day   int `json:"day"`
 		Count int `json:"count"`
@@ -1100,11 +1100,11 @@ func (s *Server) handleGetCalendarMonthInfo(c *gin.Context) {
 	var dayCounts []dayCount
 	s.db.Raw(`
 		SELECT 
-			CAST(strftime('%d', date_taken) AS INTEGER) as day,
+			CAST(EXTRACT(DAY FROM date_taken) AS INTEGER) as day,
 			COUNT(*) as count
 		FROM image_metadata
-		WHERE date_taken >= ? AND date_taken < ? AND date_taken IS NOT NULL
-		GROUP BY day
+		WHERE date_taken >= $1 AND date_taken < $2 AND date_taken IS NOT NULL
+		GROUP BY EXTRACT(DAY FROM date_taken)
 		ORDER BY day
 	`, t, nextMonth).Scan(&dayCounts)
 
@@ -1118,7 +1118,7 @@ func (s *Server) handleGetCalendarMonthInfo(c *gin.Context) {
 	var totalInMonth int
 	s.db.Raw(`
 		SELECT COUNT(*) FROM image_metadata
-		WHERE date_taken >= ? AND date_taken < ? AND date_taken IS NOT NULL
+		WHERE date_taken >= $1 AND date_taken < $2 AND date_taken IS NOT NULL
 	`, t, nextMonth).Scan(&totalInMonth)
 
 	c.JSON(http.StatusOK, gin.H{
