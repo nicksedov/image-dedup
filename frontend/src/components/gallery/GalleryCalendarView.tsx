@@ -541,7 +541,6 @@ export function GalleryCalendarView({ onImageClick }: GalleryCalendarViewProps) 
                 maxHeight: "calc(100vh - 2rem)" 
               }}
             >
-              <div className="text-xs font-medium mb-2 text-center">{t("gallery.calendar.timeline")}</div>
               <div 
                 className="relative flex-1" 
                 style={{ height: "calc(100% - 2rem)" }}
@@ -586,31 +585,14 @@ export function GalleryCalendarView({ onImageClick }: GalleryCalendarViewProps) 
                     markers.push(
                       <div
                         key={`year-${current.getFullYear()}`}
-                        className="absolute left-0 right-0 border-t border-primary/30"
+                        className="absolute left-0 right-0 border-t border-primary/50"
                         style={{ top: `${topPercent}%` }}
                       >
-                        <span className="absolute left-0 text-[9px] font-semibold text-primary whitespace-nowrap -translate-x-1/2" style={{ left: "50%" }}>
+                        <span className="absolute left-0 text-[9px] font-semibold text-foreground whitespace-nowrap -translate-x-1/2" style={{ left: "50%" }}>
                           {current.getFullYear()}
                         </span>
                       </div>
                     )
-                    
-                    // Add month markers for each year
-                    for (let m = 0; m < 12; m++) {
-                      const monthDate = new Date(current.getFullYear(), m, 1)
-                      if (monthDate >= start && monthDate <= end && !(monthDate.getMonth() === 0)) {
-                        const monthOffset = daysBetween(dateRange.minDate, monthDate.toISOString().split("T")[0])
-                        const monthTopPercent = totalDays > 0 ? (monthOffset / totalDays) * 100 : 0
-                        
-                        markers.push(
-                          <div
-                            key={`month-${current.getFullYear()}-${m}`}
-                            className="absolute left-0 right-0 border-t border-muted"
-                            style={{ top: `${monthTopPercent}%` }}
-                          />
-                        )
-                      }
-                    }
                     
                     current.setFullYear(current.getFullYear() + 1)
                     current = new Date(current.getFullYear(), 0, 1)
@@ -649,7 +631,7 @@ export function GalleryCalendarView({ onImageClick }: GalleryCalendarViewProps) 
                   return (
                     <div
                       key={group.date}
-                      className="absolute left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-primary cursor-pointer hover:scale-150 transition-transform"
+                      className="absolute left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-primary/40 cursor-pointer hover:scale-150 transition-transform"
                       style={{ top: `${topPercent}%` }}
                       title={group.date}
                       onClick={(e) => {
@@ -663,15 +645,6 @@ export function GalleryCalendarView({ onImageClick }: GalleryCalendarViewProps) 
                   )
                 })}
 
-                {/* Oldest date label (top since ASC order) */}
-                <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] text-muted-foreground whitespace-nowrap">
-                  {formatShortDate(dateRange.minDate)}
-                </div>
-
-                {/* Newest date label (bottom) */}
-                <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] text-muted-foreground whitespace-nowrap">
-                  {formatShortDate(dateRange.maxDate)}
-                </div>
               </div>
             </div>
           </div>
@@ -685,9 +658,4 @@ function daysBetween(date1: string, date2: string): number {
   const d1 = new Date(date1 + "T00:00:00")
   const d2 = new Date(date2 + "T00:00:00")
   return Math.floor((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24))
-}
-
-function formatShortDate(date: string): string {
-  const d = new Date(date + "T00:00:00")
-  return d.toLocaleDateString(undefined, { month: "short", year: "2-digit" })
 }
