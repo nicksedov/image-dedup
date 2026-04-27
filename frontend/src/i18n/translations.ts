@@ -7,7 +7,7 @@ export const translations = {
     "header.toggleLanguage": "Toggle language",
 
     // Tabs
-    "tabs.settings": "Settings",
+    "tabs.preferences": "Preferences",
     "tabs.gallery": "Gallery",
     "tabs.deduplication": "Deduplication",
 
@@ -413,7 +413,7 @@ export const translations = {
     "header.toggleLanguage": "Переключить язык",
 
     // Tabs
-    "tabs.settings": "Настройки",
+    "tabs.preferences": "Настройки пользователя",
     "tabs.gallery": "Галерея",
     "tabs.deduplication": "Дедупликация",
 

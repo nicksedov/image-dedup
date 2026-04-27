@@ -24,7 +24,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const [adminExpanded, setAdminExpanded] = useState(false)
 
   const tabs: TabItem[] = [
-    { value: "settings", icon: Settings, label: t("tabs.settings") },
+    { value: "settings", icon: Settings, label: t("tabs.preferences") },
     { value: "deduplication", icon: FileScan, label: t("tabs.deduplication") },
     { value: "profile", icon: Shield, label: t("adminPanel.updateProfile") },
   ]
