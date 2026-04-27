@@ -217,7 +217,8 @@ func (om *OcrManager) processUnclassified() {
 	// Process results with batch DB writes
 	const batchSize = 50
 	var toCreate []domain.OcrClassification
-	var boxesToCreate []domain.OcrBoundingBox
+	// Map to track boxes by image file ID
+	boxesByImage := make(map[uint][]domain.OcrBoundingBox)
 	count := 0
 
 	for result := range results {
@@ -234,13 +235,9 @@ func (om *OcrManager) processUnclassified() {
 
 		if result.classification != nil {
 			toCreate = append(toCreate, *result.classification)
-		}
-
-		// Store boxes with reference to the classification (will be set after insert)
-		if len(result.boxes) > 0 && result.classification != nil {
-			// We'll link boxes after classification is inserted
-			for i := range result.boxes {
-				boxesToCreate = append(boxesToCreate, result.boxes[i])
+			// Store boxes keyed by image file ID for later lookup
+			if len(result.boxes) > 0 {
+				boxesByImage[result.classification.ImageFileID] = result.boxes
 			}
 		}
 
@@ -251,13 +248,14 @@ func (om *OcrManager) processUnclassified() {
 
 		// Batch write classifications
 		if len(toCreate) >= batchSize {
-			om.saveClassificationBatch(&toCreate, &boxesToCreate)
+			om.saveClassificationBatch(&toCreate, boxesByImage)
+			boxesByImage = make(map[uint][]domain.OcrBoundingBox)
 		}
 	}
 
 	// Flush remaining
-	if len(toCreate) > 0 || len(boxesToCreate) > 0 {
-		om.saveClassificationBatch(&toCreate, &boxesToCreate)
+	if len(toCreate) > 0 {
+		om.saveClassificationBatch(&toCreate, boxesByImage)
 	}
 
 	om.mu.Lock()
@@ -266,34 +264,34 @@ func (om *OcrManager) processUnclassified() {
 }
 
 // saveClassificationBatch saves a batch of classifications and their bounding boxes
-func (om *OcrManager) saveClassificationBatch(classifications *[]domain.OcrClassification, boxes *[]domain.OcrBoundingBox) {
+func (om *OcrManager) saveClassificationBatch(classifications *[]domain.OcrClassification, boxesByImage map[uint][]domain.OcrBoundingBox) {
 	if len(*classifications) == 0 {
 		*classifications = (*classifications)[:0]
-		*boxes = (*boxes)[:0]
 		return
 	}
 
-	// Save classifications and their bounding boxes sequentially
-	// Each classification must be saved first to get its ID for bounding boxes
-	boxIdx := 0
+	// Save each classification and its bounding boxes
 	for i := range *classifications {
-		if err := om.db.Create(&(*classifications)[i]).Error; err != nil {
-			log.Printf("OCR: failed to save classification for image %d: %v", (*classifications)[i].ImageFileID, err)
+		classification := &(*classifications)[i]
+		if err := om.db.Create(classification).Error; err != nil {
+			log.Printf("OCR: failed to save classification for image %d: %v", classification.ImageFileID, err)
 			continue
 		}
 
-		// Save bounding boxes for this classification
-		classificationID := (*classifications)[i].ID
-		for boxIdx < len(*boxes) {
-			// Link box to the current classification
-			(*boxes)[boxIdx].ClassificationID = classificationID
-			if err := om.db.Create(&(*boxes)[boxIdx]).Error; err != nil {
-				log.Printf("OCR: failed to save bounding box for classification %d: %v", classificationID, err)
+		// Save bounding boxes only for text document classifications
+		if classification.IsTextDocument {
+			if boxes, ok := boxesByImage[classification.ImageFileID]; ok {
+				for j := range boxes {
+					boxes[j].ClassificationID = classification.ID
+					if err := om.db.Create(&boxes[j]).Error; err != nil {
+						log.Printf("OCR: failed to save bounding box for classification %d: %v", classification.ID, err)
+					}
+				}
+				// Clean up to avoid re-processing
+				delete(boxesByImage, classification.ImageFileID)
 			}
-			boxIdx++
 		}
 	}
 
 	*classifications = (*classifications)[:0]
-	*boxes = (*boxes)[:0]
 }
