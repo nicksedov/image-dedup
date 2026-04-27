@@ -534,7 +534,7 @@ export function GalleryCalendarView({ onImageClick }: GalleryCalendarViewProps) 
             }}
           >
             <div
-              className="rounded-l-lg border-r border-y border-l-0 bg-card p-2 mx-0"
+              className="rounded-l-lg border-r border-y border-l-0 bg-card/40 p-2 mx-0"
               style={{ 
                 pointerEvents: "auto", 
                 height: "calc(100vh - 2rem)", 
@@ -612,7 +612,7 @@ export function GalleryCalendarView({ onImageClick }: GalleryCalendarViewProps) 
 
                     return (
                       <div
-                        className="absolute left-1/2 -translate-x-1/2 w-3 bg-primary/20 rounded-sm"
+                        className="absolute left-1/2 -translate-x-1/2 w-3 bg-blue-500/50 rounded-sm"
                         style={{
                           top: `${topPercent}%`,
                           height: `${Math.max(heightPercent, 5)}%`,
