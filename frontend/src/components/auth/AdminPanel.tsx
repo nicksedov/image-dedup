@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react"
 import { useAuth } from "@/providers/AuthProvider"
-import { fetchUsers, createUser, updateUser, deleteUser, resetUserPassword, fetchOCRStatus } from "@/api/endpoints"
+import { fetchUsers, createUser, updateUser, deleteUser, resetUserPassword } from "@/api/endpoints"
 import { toast } from "sonner"
-import { Loader2, Trash2, KeyRound, Pencil, Save, X, Users, UserPlus, CheckCircle2, XCircle } from "lucide-react"
+import { Loader2, Trash2, KeyRound, Pencil, Save, X, Users, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import type { UserDTO, UserRole, OCRStatus } from "@/types"
+import type { UserDTO, UserRole } from "@/types"
 import { useTranslation } from "@/i18n"
 import { translateApiMessage } from "@/api/client"
 
@@ -35,8 +35,7 @@ export function AdminPanel() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<UserDTO | null>(null)
   const [resettingUser, setResettingUser] = useState<UserDTO | null>(null)
-  const [ocrStatus, setOcrStatus] = useState<OCRStatus | null>(null)
-  const [isOcrLoading, setIsOcrLoading] = useState(false)
+
 
   const loadUsers = useCallback(async () => {
     try {
@@ -53,25 +52,6 @@ export function AdminPanel() {
     loadUsers()
   }, [loadUsers])
 
-  // Periodically check OCR status
-  useEffect(() => {
-    const checkOCRStatus = async () => {
-      try {
-        setIsOcrLoading(true)
-        const response = await fetchOCRStatus()
-        setOcrStatus(response.status)
-      } catch {
-        // OCR not available or disabled
-      } finally {
-        setIsOcrLoading(false)
-      }
-    }
-
-    checkOCRStatus()
-    const interval = setInterval(checkOCRStatus, 10000) // every 10 seconds
-    return () => clearInterval(interval)
-  }, [])
-
   if (currentUser?.role !== "admin") {
     return (
       <div className="flex items-center justify-center py-20">
@@ -82,39 +62,6 @@ export function AdminPanel() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      {/* OCR Status Indicator */}
-      {ocrStatus && (
-        <div className="rounded-lg border bg-card p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {ocrStatus.enabled ? (
-              ocrStatus.health === "healthy" ? (
-                <CheckCircle2 className="h-5 w-5 text-green-500" />
-              ) : (
-                <XCircle className="h-5 w-5 text-red-500" />
-              )
-            ) : (
-              <XCircle className="h-5 w-5 text-muted-foreground" />
-            )}
-            <div>
-              <p className="text-sm font-medium">
-                {ocrStatus.enabled
-                  ? t("adminPanel.ocrStatusEnabled", { health: ocrStatus.health })
-                  : t("adminPanel.ocrStatusDisabled")}
-              </p>
-              {ocrStatus.error && (
-                <p className="text-xs text-red-500 mt-1">{ocrStatus.error}</p>
-              )}
-              {ocrStatus.lastCheck && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t("adminPanel.ocrLastCheck", { time: ocrStatus.lastCheck })}
-                </p>
-              )}
-            </div>
-          </div>
-          {isOcrLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-        </div>
-      )}
-
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">{t("adminPanel.title")}</h2>

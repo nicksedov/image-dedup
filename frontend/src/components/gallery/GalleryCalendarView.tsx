@@ -534,7 +534,7 @@ export function GalleryCalendarView({ onImageClick }: GalleryCalendarViewProps) 
             }}
           >
             <div
-              className="rounded-l-lg border-r border-y border-l-0 bg-card/40 p-2 mx-0"
+              className="rounded-l-lg border-r border-y border-l-0 bg-gray-400/40 p-2 mx-0"
               style={{ 
                 pointerEvents: "auto", 
                 height: "calc(100vh - 2rem)", 
