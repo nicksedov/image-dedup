@@ -332,7 +332,8 @@ type BoundingBoxDTO struct {
 
 // OcrDataResponse for GET /api/ocr/data
 type OcrDataResponse struct {
-	ImagePath string           `json:"imagePath"`
-	Angle     int              `json:"angle"`
-	Boxes     []BoundingBoxDTO `json:"boxes"`
+	ImagePath   string           `json:"imagePath"`
+	Angle       int              `json:"angle"`
+	ScaleFactor float32          `json:"scaleFactor"`
+	Boxes       []BoundingBoxDTO `json:"boxes"`
 }

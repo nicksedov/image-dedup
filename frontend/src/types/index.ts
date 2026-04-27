@@ -389,6 +389,7 @@ export interface OcrDocumentsResponse {
 export interface OcrDataResponse {
   imagePath: string
   angle: number
+  scaleFactor: number
   boxes: OcrBoundingBoxDTO[]
 }
 

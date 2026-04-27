@@ -75,8 +75,13 @@ export function OcrLightbox({ imagePath, onClose }: OcrLightboxProps) {
   }, [imageLoaded])
 
   // Calculate scale factor for bounding boxes
-  const scaleX = imageDimensions && displayDimensions ? displayDimensions.width / imageDimensions.width : 1
-  const scaleY = imageDimensions && displayDimensions ? displayDimensions.height / imageDimensions.height : 1
+  // scaleFactor converts from OCR-processed image coords to original image coords
+  // scaleX/scaleY convert from original image coords to display coords
+  const baseScaleX = imageDimensions && displayDimensions ? displayDimensions.width / imageDimensions.width : 1
+  const baseScaleY = imageDimensions && displayDimensions ? displayDimensions.height / imageDimensions.height : 1
+  const scaleFactor = ocrData?.scaleFactor || 1
+  const scaleX = baseScaleX * scaleFactor
+  const scaleY = baseScaleY * scaleFactor
 
   const imageUrl = imagePath ? `${API_BASE_URL}/api/image?path=${encodeURIComponent(imagePath)}` : ""
 
