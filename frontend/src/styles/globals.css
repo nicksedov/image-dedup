@@ -419,6 +419,15 @@
 
 body {
   background-color: var(--color-background);
-  color: var(--color-foreground);
+  color: var(--color-card-foreground);
   font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* Ensure text is visible on dark themes */
+.dark-purple,
+.dark-green,
+.dark-blue,
+.dark-orange,
+.dark-contrast {
+  color: var(--color-card-foreground);
 }
