@@ -38,9 +38,9 @@ type ClassifyParams struct {
 // DefaultClassifyParams returns default parameters matching openapi.yaml spec
 func DefaultClassifyParams() *ClassifyParams {
 	return &ClassifyParams{
-		ConfidenceThreshold: 0.55,
+		ConfidenceThreshold: 0.65,
 		Level:               "RIL_TEXTLINE",
-		MinTokenCount:       32,
+		MinTokenCount:       40,
 		Lang:                "eng+rus",
 	}
 }
