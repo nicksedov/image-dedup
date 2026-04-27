@@ -233,8 +233,8 @@ func (c *clientImpl) Classify(ctx context.Context, image io.Reader, contentType 
 	}
 	req.Header.Set("Content-Type", contentType)
 
-	// Use longer timeout for OCR processing (30s)
-	client := &http.Client{Timeout: 30 * time.Second}
+	// Use longer timeout for OCR processing (90s) - OCR can be slow for large images
+	client := &http.Client{Timeout: 180 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)

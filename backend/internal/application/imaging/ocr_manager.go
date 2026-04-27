@@ -269,19 +269,30 @@ func (om *OcrManager) processUnclassified() {
 func (om *OcrManager) saveClassificationBatch(classifications *[]domain.OcrClassification, boxes *[]domain.OcrBoundingBox) {
 	if len(*classifications) == 0 {
 		*classifications = (*classifications)[:0]
+		*boxes = (*boxes)[:0]
 		return
 	}
 
-	// Save classifications
+	// Save classifications and their bounding boxes sequentially
+	// Each classification must be saved first to get its ID for bounding boxes
+	boxIdx := 0
 	for i := range *classifications {
 		if err := om.db.Create(&(*classifications)[i]).Error; err != nil {
 			log.Printf("OCR: failed to save classification for image %d: %v", (*classifications)[i].ImageFileID, err)
+			continue
+		}
+
+		// Save bounding boxes for this classification
+		classificationID := (*classifications)[i].ID
+		for boxIdx < len(*boxes) {
+			// Link box to the current classification
+			(*boxes)[boxIdx].ClassificationID = classificationID
+			if err := om.db.Create(&(*boxes)[boxIdx]).Error; err != nil {
+				log.Printf("OCR: failed to save bounding box for classification %d: %v", classificationID, err)
+			}
+			boxIdx++
 		}
 	}
-
-	// Note: Bounding boxes need the classification ID which is set after insert
-	// Since we're processing sequentially, we'll save boxes immediately after each classification
-	// For better performance, we could batch them, but this keeps the logic simple
 
 	*classifications = (*classifications)[:0]
 	*boxes = (*boxes)[:0]
