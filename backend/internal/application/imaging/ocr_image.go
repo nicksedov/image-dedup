@@ -34,9 +34,9 @@ func PrepareOcrImage(imagePath string, scaleFactor float64, angle float64) ([]by
 		}
 	}
 
-	// Rotate clockwise by angle (imaging.Rotate rotates counter-clockwise)
+	// Rotate counter-clockwise by angle
 	if angle != 0 {
-		img = imaging.Rotate(img, -angle, color.Black)
+		img = imaging.Rotate(img, angle, color.Black)
 	}
 
 	var buf bytes.Buffer

@@ -79,7 +79,6 @@ export function OcrLightbox({ imagePath, onClose }: OcrLightboxProps) {
   // scaleX/scaleY convert from original image coords to display coords
   const baseScaleX = imageDimensions && displayDimensions ? displayDimensions.width / imageDimensions.width : 1
   const baseScaleY = imageDimensions && displayDimensions ? displayDimensions.height / imageDimensions.height : 1
-  const scaleFactor = ocrData?.scaleFactor || 1
   const scaleX = baseScaleX
   const scaleY = baseScaleY
 
