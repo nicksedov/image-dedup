@@ -17,6 +17,7 @@ export const translations = {
     "common.loading": "Loading...",
     "common.cancel": "Cancel",
     "common.close": "Close",
+    "common.save": "Save",
     "common.saving": "Saving...",
 
     // Settings tab
@@ -469,6 +470,8 @@ export const translations = {
     "llm_ocr.notEnabled": "LLM recognition not enabled",
     "llm_ocr.seconds": "{seconds} sec",
     "llm_ocr.milliseconds": "{ms} ms",
+    "llm_ocr.enableRecognition": "Enable LLM Recognition",
+    "llm_ocr.enableDescription": "Allow using VL LLM for text recognition in OCR Lightbox",
   },
 
   ru: {
@@ -498,6 +501,7 @@ export const translations = {
     "common.loading": "Загрузка...",
     "common.cancel": "Отмена",
     "common.close": "Закрыть",
+    "common.save": "Сохранить",
     "common.saving": "Сохранение...",
 
     // Settings tab
@@ -940,5 +944,7 @@ export const translations = {
     "llm_ocr.notEnabled": "LLM распознавание не включено",
     "llm_ocr.seconds": "{seconds} сек",
     "llm_ocr.milliseconds": "{ms} мс",
+    "llm_ocr.enableRecognition": "Включить LLM распознавание",
+    "llm_ocr.enableDescription": "Разрешить использование VL LLM для распознавания текста в OCR Lightbox",
   },
 } as const

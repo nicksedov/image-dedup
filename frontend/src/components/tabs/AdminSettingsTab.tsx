@@ -4,17 +4,19 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
 import { AddFolderForm } from "@/components/settings/AddFolderForm"
 import { FolderList } from "@/components/settings/FolderList"
 import { ScanProgressBanner } from "@/components/ScanProgressBanner"
 import { useGalleryFolders } from "@/hooks/useGalleryFolders"
 import { useScanStatus } from "@/hooks/useScanStatus"
-import { fetchTrashInfo, cleanTrash, updateSettings, fetchOCRStatus, triggerScan, triggerFastScan } from "@/api/endpoints"
+import { fetchTrashInfo, cleanTrash, updateSettings, fetchOCRStatus, triggerScan, triggerFastScan, fetchLlmSettings, updateLlmSettings } from "@/api/endpoints"
 import { useSettings } from "@/providers/useSettings"
 import { useAuth } from "@/providers/AuthProvider"
-import { RefreshCw, Trash2, Shield, Loader2, Zap } from "lucide-react"
+import { RefreshCw, Trash2, Shield, Loader2, Zap, Wand2 } from "lucide-react"
 import { useTranslation, type TranslationKey } from "@/i18n"
-import type { OCRStatus } from "@/types"
+import type { OCRStatus, LlmSettingsDTO } from "@/types"
 
 export function AdminSettingsTab() {
   const { folders, isLoading, add, remove, refetch } = useGalleryFolders()
@@ -31,6 +33,19 @@ export function AdminSettingsTab() {
   const [isSavingTrash, setIsSavingTrash] = useState(false)
   const [ocrStatus, setOcrStatus] = useState<OCRStatus | null>(null)
   const [isOcrLoading, setIsOcrLoading] = useState(false)
+
+  // LLM Settings state
+  const [llmSettings, setLlmSettings] = useState<LlmSettingsDTO>({
+    id: 0,
+    provider: "ollama",
+    apiUrl: "http://localhost:11434",
+    apiKey: "",
+    model: "minicpm-v",
+    enabled: false,
+  })
+  const [isLlmLoading, setIsLlmLoading] = useState(false)
+  const [isLlmSaving, setIsLlmSaving] = useState(false)
+  const [llmFormDirty, setLlmFormDirty] = useState(false)
 
   const loadTrashInfo = useCallback(() => {
     fetchTrashInfo()
@@ -60,11 +75,61 @@ export function AdminSettingsTab() {
     }
   }, [])
 
+  const loadLlmSettings = useCallback(async () => {
+    try {
+      setIsLlmLoading(true)
+      const settings = await fetchLlmSettings()
+      setLlmSettings(settings)
+      setLlmFormDirty(false)
+    } catch {
+      setLlmSettings({
+        id: 0,
+        provider: "ollama",
+        apiUrl: "http://localhost:11434",
+        apiKey: "",
+        model: "minicpm-v",
+        enabled: false,
+      })
+    } finally {
+      setIsLlmLoading(false)
+    }
+  }, [])
+
+  const handleSaveLlmSettings = useCallback(async () => {
+    setIsLlmSaving(true)
+    try {
+      await updateLlmSettings({
+        provider: llmSettings.provider,
+        apiUrl: llmSettings.apiUrl,
+        apiKey: llmSettings.apiKey,
+        model: llmSettings.model,
+        enabled: llmSettings.enabled,
+      })
+      toast.success(t("llm_ocr.settingsSaved"))
+      setLlmFormDirty(false)
+      await loadLlmSettings()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("llm_ocr.settingsSaveFailed"))
+    } finally {
+      setIsLlmSaving(false)
+    }
+  }, [llmSettings, loadLlmSettings, t])
+
+  const handleLlmFieldChange = useCallback((field: keyof LlmSettingsDTO, value: string | boolean) => {
+    setLlmSettings((prev) => ({ ...prev, [field]: value }))
+    setLlmFormDirty(true)
+  }, [])
+
+  useEffect(() => {
+    loadTrashInfo()
+  }, [loadTrashInfo])
+
   useEffect(() => {
     if (isAdmin) {
       loadOCRStatus()
+      loadLlmSettings()
     }
-  }, [isAdmin, loadOCRStatus])
+  }, [isAdmin, loadOCRStatus, loadLlmSettings])
 
   const handleSaveTrashDir = useCallback(async () => {
     setIsSavingTrash(true)
@@ -327,6 +392,113 @@ export function AdminSettingsTab() {
                 {isOcrLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
               </Button>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* LLM Settings - Admin Only */}
+      {isAdmin && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wand2 className="h-5 w-5" />
+              {t("llm_ocr.settings")}
+            </CardTitle>
+            <CardDescription>{t("llm_ocr.description")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLlmLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Provider Selection */}
+                <div className="space-y-2">
+                  <Label htmlFor="llm-provider">{t("llm_ocr.provider")}</Label>
+                  <Select
+                    value={llmSettings.provider}
+                    onValueChange={(value) => handleLlmFieldChange("provider", value)}
+                  >
+                    <SelectTrigger id="llm-provider">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ollama">Ollama</SelectItem>
+                      <SelectItem value="openai">OpenAI API</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* API URL */}
+                <div className="space-y-2">
+                  <Label htmlFor="llm-apiurl">API URL</Label>
+                  <Input
+                    id="llm-apiurl"
+                    placeholder={llmSettings.provider === "ollama" ? "http://localhost:11434" : "https://api.openai.com"}
+                    value={llmSettings.apiUrl}
+                    onChange={(e) => handleLlmFieldChange("apiUrl", e.target.value)}
+                  />
+                </div>
+
+                {/* API Key (only for OpenAI) */}
+                {llmSettings.provider === "openai" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="llm-apikey">API Key</Label>
+                    <Input
+                      id="llm-apikey"
+                      type="password"
+                      placeholder="sk-..."
+                      value={llmSettings.apiKey}
+                      onChange={(e) => handleLlmFieldChange("apiKey", e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {/* Model */}
+                <div className="space-y-2">
+                  <Label htmlFor="llm-model">{t("llm_ocr.model")}</Label>
+                  <Input
+                    id="llm-model"
+                    placeholder={llmSettings.provider === "ollama" ? "minicpm-v" : "gpt-4-vision-preview"}
+                    value={llmSettings.model}
+                    onChange={(e) => handleLlmFieldChange("model", e.target.value)}
+                  />
+                </div>
+
+                {/* Enable/Disable Checkbox */}
+                <div className="flex items-center space-x-2 rounded-lg border p-3">
+                  <Checkbox
+                    id="llm-enabled"
+                    checked={llmSettings.enabled}
+                    onCheckedChange={(checked) => handleLlmFieldChange("enabled", checked === true)}
+                  />
+                  <div className="space-y-0.5">
+                    <Label htmlFor="llm-enabled">{t("llm_ocr.enableRecognition")}</Label>
+                    <p className="text-xs text-muted-foreground">
+                      {t("llm_ocr.enableDescription")}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Save Button */}
+                <div className="flex justify-end pt-2">
+                  <Button
+                    onClick={handleSaveLlmSettings}
+                    disabled={isLlmSaving || !llmFormDirty}
+                  >
+                    {isLlmSaving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {t("common.saving")}
+                      </>
+                    ) : (
+                      t("common.save")
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

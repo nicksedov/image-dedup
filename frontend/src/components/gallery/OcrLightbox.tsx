@@ -23,24 +23,31 @@ export function OcrLightbox({ imagePath, onClose }: OcrLightboxProps) {
   const [displayDimensions, setDisplayDimensions] = useState<{ width: number; height: number } | null>(null)
   const imageRef = useRef<HTMLImageElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const prevImagePath = useRef<string | null>(null)
 
   // Load OCR data when lightbox opens
   useEffect(() => {
     if (!imagePath) {
       // Reset all state when no image is selected
-      const resetState = () => {
-        setOcrData(null)
-        setLlmData(null)
-        setImageLoaded(false)
-        setImageDimensions(null)
-        setDisplayDimensions(null)
-      }
-      resetState()
+      setOcrData(null)
+      setLlmData(null)
+      setImageLoaded(false)
+      setImageDimensions(null)
+      setDisplayDimensions(null)
+      setLoading(false)
+      prevImagePath.current = null
       return
     }
 
+    // Only fetch if imagePath changed
+    if (prevImagePath.current === imagePath) {
+      return
+    }
+    prevImagePath.current = imagePath
+
     let isMounted = true
     setLoading(true)
+    
     Promise.all([
       fetchOcrData(imagePath).catch(() => null),
       fetchLlmRecognition(imagePath).catch(() => null),
@@ -48,8 +55,9 @@ export function OcrLightbox({ imagePath, onClose }: OcrLightboxProps) {
       if (isMounted) {
         setOcrData(ocr)
         setLlmData(llm)
+        setLoading(false)
       }
-    }).finally(() => {
+    }).catch(() => {
       if (isMounted) {
         setLoading(false)
       }
