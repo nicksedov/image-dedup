@@ -239,8 +239,8 @@ export function OcrLightbox({ imagePath, onClose }: OcrLightboxProps) {
         </button>
 
         <div className="flex h-full">
-          {/* Image with bounding boxes - 60% width */}
-          <div className="w-[60%] flex items-center justify-center p-8 relative" ref={containerRef}>
+          {/* Image with bounding boxes - 50% width */}
+          <div className="w-[50%] flex items-center justify-center p-8 relative" ref={containerRef}>
             {loading && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-white" />
@@ -279,21 +279,15 @@ export function OcrLightbox({ imagePath, onClose }: OcrLightboxProps) {
                         height: box.height * scaleY,
                       }}
                       title={`${box.word} (${(box.confidence * 100).toFixed(0)}%)`}
-                    >
-                      {box.width * scaleX > 30 && box.height * scaleY > 15 && (
-                        <span className="absolute -top-5 left-0 text-[10px] text-yellow-400 whitespace-nowrap bg-black/70 px-1 rounded">
-                          {box.word}
-                        </span>
-                      )}
-                    </div>
+                    ></div>
                   ))}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Right panel - 40% width */}
-          <div className="w-[40%] bg-card border-l p-4 overflow-y-auto">
+          {/* Right panel - 50% width */}
+          <div className="w-[50%] bg-card border-l p-4 h-full overflow-y-auto">
             {recognizing ? (
               <div className="flex flex-col items-center justify-center h-full">
                 <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
