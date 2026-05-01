@@ -332,6 +332,7 @@ export const translations = {
     // Auth messages
     "api.auth.internal_error": "Internal server error",
     "api.auth.invalid_credentials": "Invalid login or password",
+    "api.auth.rate_limited": "Too many attempts. Please try again later",
     "api.auth.bootstrap_mode": "Bootstrap mode - please complete initial setup",
     "api.auth.logout_success": "Logged out successfully",
     "api.auth.unauthorized": "Authorization required",
@@ -407,6 +408,9 @@ export const translations = {
     "api.trash.not_exists": "Trash directory does not exist",
     "api.trash.read_failed": "Failed to read trash directory",
 
+    // Gallery messages
+    "api.gallery.conflict": "Gallery folder conflict detected",
+
     // OCR tab
     "ocr.title": "OCR Documents",
     "ocr.description": "Images classified as text documents",
@@ -436,6 +440,15 @@ export const translations = {
     "api.ocr.already_running": "OCR scan already in progress",
     "api.ocr.image_path_required": "Image path required",
     "api.ocr.data_not_found": "OCR data not found for this image",
+
+    // API LLM OCR messages
+    "api.llm_ocr.not_enabled": "LLM recognition is not enabled",
+    "api.llm_ocr.settings_not_found": "LLM settings not found",
+    "api.llm_ocr.recognition_failed": "Text recognition failed",
+    "api.llm_ocr.recognition_started": "Text recognition started",
+    "api.llm_ocr.settings_saved": "Settings saved",
+    "api.llm_ocr.settings_save_failed": "Failed to save settings",
+    "api.llm_ocr.no_recognition": "No recognition data available",
 
     // LLM OCR messages
     "llm_ocr.title": "Text Recognition (VL LLM)",
@@ -790,6 +803,7 @@ export const translations = {
     // Auth messages
     "api.auth.internal_error": "Внутренняя ошибка сервера",
     "api.auth.invalid_credentials": "Неверный логин или пароль",
+    "api.auth.rate_limited": "Слишком много попыток. Пожалуйста, попробуйте позже",
     "api.auth.bootstrap_mode": "Режим первичной настройки - завершите первоначальную настройку",
     "api.auth.logout_success": "Выход выполнен",
     "api.auth.unauthorized": "Требуется авторизация",
@@ -865,6 +879,9 @@ export const translations = {
     "api.trash.not_exists": "Директория корзины не существует",
     "api.trash.read_failed": "Не удалось прочитать директорию корзины",
 
+    // Gallery messages
+    "api.gallery.conflict": "Обнаружен конфликт папок галереи",
+
     // OCR tab
     "ocr.title": "OCR Документы",
     "ocr.description": "Изображения, классифицированные как текстовые документы",
@@ -894,6 +911,15 @@ export const translations = {
     "api.ocr.already_running": "OCR сканирование уже выполняется",
     "api.ocr.image_path_required": "Требуется путь к изображению",
     "api.ocr.data_not_found": "OCR данные для этого изображения не найдены",
+
+    // API LLM OCR messages
+    "api.llm_ocr.not_enabled": "LLM распознавание не включено",
+    "api.llm_ocr.settings_not_found": "Настройки LLM не найдены",
+    "api.llm_ocr.recognition_failed": "Ошибка распознавания текста",
+    "api.llm_ocr.recognition_started": "Распознавание текста начато",
+    "api.llm_ocr.settings_saved": "Настройки сохранены",
+    "api.llm_ocr.settings_save_failed": "Не удалось сохранить настройки",
+    "api.llm_ocr.no_recognition": "Данные распознавания отсутствуют",
 
     // LLM OCR messages
     "llm_ocr.title": "Распознавание текста (VL LLM)",
