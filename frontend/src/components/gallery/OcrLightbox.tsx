@@ -4,7 +4,7 @@ import { X, Loader2, Wand2 } from "lucide-react"
 import { useTranslation } from "@/i18n"
 import { fetchOcrData, fetchLlmRecognition, recognizeWithLlm, fetchLlmRecognizeStatus } from "@/api/endpoints"
 import type { OcrDataResponse, LlmOcrDataResponse } from "@/types"
-import ReactMarkdown from "react-markdown"
+import ReactMarkdown, { type Components } from "react-markdown"
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || ""
 
@@ -26,17 +26,24 @@ export function OcrLightbox({ imagePath, onClose }: OcrLightboxProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const prevImagePath = useRef<string | null>(null)
 
+  const resetState = useCallback(() => {
+    setOcrData(null)
+    setLlmData(null)
+    setImageLoaded(false)
+    setImageDimensions(null)
+    setDisplayDimensions(null)
+    setLoading(false)
+    prevImagePath.current = null
+  }, [])
+
+  const handleClose = useCallback(() => {
+    resetState()
+    onClose()
+  }, [resetState, onClose])
+
   // Load OCR data when lightbox opens
   useEffect(() => {
     if (!imagePath) {
-      // Reset all state when no image is selected
-      setOcrData(null)
-      setLlmData(null)
-      setImageLoaded(false)
-      setImageDimensions(null)
-      setDisplayDimensions(null)
-      setLoading(false)
-      prevImagePath.current = null
       return
     }
 
@@ -213,7 +220,7 @@ export function OcrLightbox({ imagePath, onClose }: OcrLightboxProps) {
   }
 
   return (
-    <Dialog open={imagePath !== null} onOpenChange={() => onClose()}>
+    <Dialog open={imagePath !== null} onOpenChange={() => handleClose()}>
       <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 bg-black/95 border-0">
         <DialogHeader className="absolute top-4 left-4 right-16 z-50">
           <DialogTitle className="text-white text-lg">
@@ -225,7 +232,7 @@ export function OcrLightbox({ imagePath, onClose }: OcrLightboxProps) {
         </DialogHeader>
 
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="absolute top-4 right-4 z-50 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
         >
           <X className="h-5 w-5" />
@@ -335,30 +342,32 @@ export function OcrLightbox({ imagePath, onClose }: OcrLightboxProps) {
                 {/* Markdown content */}
                 <div className="mt-4 p-4 bg-muted rounded-lg markdown-body">
                   <ReactMarkdown
-                    components={{
-                      h1: (props) => <h1 className="text-xl font-bold mt-4 mb-2" {...props} />,
-                      h2: (props) => <h2 className="text-lg font-bold mt-3 mb-2" {...props} />,
-                      h3: (props) => <h3 className="text-base font-bold mt-2 mb-1" {...props} />,
-                      p: (props) => <p className="mb-2 leading-relaxed" {...props} />,
-                      ul: (props) => <ul className="list-disc list-inside mb-2 space-y-1" {...props} />,
-                      ol: (props) => <ol className="list-decimal list-inside mb-2 space-y-1" {...props} />,
-                      li: (props) => <li className="text-sm" {...props} />,
-                      code: ({ className, ...props }) => {
-                        const isInline = !className
-                        return isInline
-                          ? <code className="bg-muted-foreground/20 px-1.5 py-0.5 rounded text-sm font-mono" {...props} />
-                          : <code className="block bg-muted-foreground/20 p-2 rounded text-sm font-mono overflow-x-auto" {...props} />
-                      },
-                      blockquote: (props) => <blockquote className="border-l-4 border-primary pl-3 italic my-2" {...props} />,
-                      table: (props) => <table className="min-w-full border-collapse border border-border my-2" {...props} />,
-                      th: (props) => <th className="border border-border px-3 py-1.5 font-semibold text-left" {...props} />,
-                      td: (props) => <td className="border border-border px-3 py-1.5" {...props} />,
-                      a: (props) => <a className="text-primary underline hover:opacity-80" {...props} />,
-                      strong: (props) => <strong className="font-semibold" {...props} />,
-                      em: (props) => <em className="italic" {...props} />,
-                      hr: (props) => <hr className="border-border my-3" {...props} />,
-                      img: (props) => <img className="max-w-full h-auto rounded my-2" {...props} />,
-                    }}
+                    components={
+                      {
+                        h1: (props) => <h1 className="text-xl font-bold mt-4 mb-2" {...props} />,
+                        h2: (props) => <h2 className="text-lg font-bold mt-3 mb-2" {...props} />,
+                        h3: (props) => <h3 className="text-base font-bold mt-2 mb-1" {...props} />,
+                        p: (props) => <p className="mb-2 leading-relaxed" {...props} />,
+                        ul: (props) => <ul className="list-disc list-inside mb-2 space-y-1" {...props} />,
+                        ol: (props) => <ol className="list-decimal list-inside mb-2 space-y-1" {...props} />,
+                        li: (props) => <li className="text-sm" {...props} />,
+                        code: ({ className, ...props }) => {
+                          const isInline = !className
+                          return isInline
+                            ? <code className="bg-muted-foreground/20 px-1.5 py-0.5 rounded text-sm font-mono" {...props} />
+                            : <code className="block bg-muted-foreground/20 p-2 rounded text-sm font-mono overflow-x-auto" {...props} />
+                        },
+                        blockquote: (props) => <blockquote className="border-l-4 border-primary pl-3 italic my-2" {...props} />,
+                        table: (props) => <table className="min-w-full border-collapse border border-border my-2" {...props} />,
+                        th: (props) => <th className="border border-border px-3 py-1.5 font-semibold text-left" {...props} />,
+                        td: (props) => <td className="border border-border px-3 py-1.5" {...props} />,
+                        a: (props) => <a className="text-primary underline hover:opacity-80" {...props} />,
+                        strong: (props) => <strong className="font-semibold" {...props} />,
+                        em: (props) => <em className="italic" {...props} />,
+                        hr: (props) => <hr className="border-border my-3" {...props} />,
+                        img: (props) => <img className="max-w-full h-auto rounded my-2" {...props} />,
+                      } as Components
+                    }
                   >
                     {llmData.markdownContent}
                   </ReactMarkdown>
