@@ -104,3 +104,45 @@ func (c *OllamaClient) Recognize(imagePath string, systemPrompt string) (string,
 
 	return ollamaResp.Message.Content, nil
 }
+
+// ollamaTagsResponse represents Ollama tags response
+type ollamaTagsResponse struct {
+	Models []ollamaModel `json:"models"`
+}
+
+type ollamaModel struct {
+	Name       string `json:"name"`
+	Size       int64  `json:"size"`
+	ModifiedAt string `json:"modified_at"`
+	Digest     string `json:"digest"`
+}
+
+// ListModels returns a list of available models from Ollama server
+func (c *OllamaClient) ListModels() ([]ModelInfo, error) {
+	resp, err := http.Get(c.BaseURL + "/api/tags")
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to Ollama: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("Ollama API error (status %d): %s", resp.StatusCode, string(body))
+	}
+
+	var tagsResp ollamaTagsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tagsResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	models := make([]ModelInfo, len(tagsResp.Models))
+	for i, m := range tagsResp.Models {
+		models[i] = ModelInfo{
+			ID:   m.Name,
+			Name: m.Name,
+			Size: m.Size,
+		}
+	}
+
+	return models, nil
+}

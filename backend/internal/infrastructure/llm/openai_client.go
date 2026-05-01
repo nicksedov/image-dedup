@@ -159,3 +159,52 @@ func (c *OpenAIClient) Recognize(imagePath string, systemPrompt string) (string,
 
 	return openAIResp.Choices[0].Message.Content, nil
 }
+
+// openAIModelsResponse represents OpenAI models list response
+type openAIModelsResponse struct {
+	Data []openAIModel `json:"data"`
+}
+
+type openAIModel struct {
+	ID      string `json:"id"`
+	Object  string `json:"object"`
+	Created int64  `json:"created"`
+}
+
+// ListModels returns a list of available models from OpenAI-compatible server
+func (c *OpenAIClient) ListModels() ([]ModelInfo, error) {
+	client := &http.Client{Timeout: 30 * time.Second}
+	httpReq, err := http.NewRequest("GET", c.BaseURL+"/v1/models", nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+c.APIKey)
+
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to server: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(body))
+	}
+
+	var modelsResp openAIModelsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&modelsResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	models := make([]ModelInfo, len(modelsResp.Data))
+	for i, m := range modelsResp.Data {
+		models[i] = ModelInfo{
+			ID:   m.ID,
+			Name: m.ID,
+		}
+	}
+
+	return models, nil
+}

@@ -58,7 +58,7 @@ func (s *LlmOcrService) RecognizeWithLlm(imageFileID uint, client llm.Client, se
 	processingTime := int(time.Since(startTime).Milliseconds())
 
 	if err != nil {
-		// Save failed result
+		// Save failed result using UPSERT
 		recognition := domain.OcrLlmRecognition{
 			ImageFileID:         imageFileID,
 			OcrClassificationID: classification.ID,
@@ -70,11 +70,14 @@ func (s *LlmOcrService) RecognizeWithLlm(imageFileID uint, client llm.Client, se
 			Error:               err.Error(),
 			Success:             false,
 		}
-		s.db.Create(&recognition)
+		s.db.
+			Where("image_file_id = ?", imageFileID).
+			Assign(recognition).
+			FirstOrCreate(&recognition)
 		return nil, err
 	}
 
-	// Step 6: Save successful result
+	// Step 6: Save successful result using UPSERT
 	recognition := domain.OcrLlmRecognition{
 		ImageFileID:         imageFileID,
 		OcrClassificationID: classification.ID,
@@ -86,7 +89,10 @@ func (s *LlmOcrService) RecognizeWithLlm(imageFileID uint, client llm.Client, se
 		Error:               "",
 		Success:             true,
 	}
-	if err := s.db.Create(&recognition).Error; err != nil {
+	if err := s.db.
+		Where("image_file_id = ?", imageFileID).
+		Assign(recognition).
+		FirstOrCreate(&recognition).Error; err != nil {
 		return nil, fmt.Errorf("failed to save recognition result: %w", err)
 	}
 

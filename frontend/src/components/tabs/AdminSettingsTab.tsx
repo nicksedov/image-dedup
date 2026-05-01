@@ -11,12 +11,12 @@ import { FolderList } from "@/components/settings/FolderList"
 import { ScanProgressBanner } from "@/components/ScanProgressBanner"
 import { useGalleryFolders } from "@/hooks/useGalleryFolders"
 import { useScanStatus } from "@/hooks/useScanStatus"
-import { fetchTrashInfo, cleanTrash, updateSettings, fetchOCRStatus, triggerScan, triggerFastScan, fetchLlmSettings, updateLlmSettings } from "@/api/endpoints"
+import { fetchTrashInfo, cleanTrash, updateSettings, fetchOCRStatus, triggerScan, triggerFastScan, fetchLlmSettings, updateLlmSettings, fetchLlmModels } from "@/api/endpoints"
 import { useSettings } from "@/providers/useSettings"
 import { useAuth } from "@/providers/AuthProvider"
 import { RefreshCw, Trash2, Shield, Loader2, Zap, Wand2 } from "lucide-react"
 import { useTranslation, type TranslationKey } from "@/i18n"
-import type { OCRStatus, LlmSettingsDTO } from "@/types"
+import type { OCRStatus, LlmSettingsDTO, LlmModelDTO } from "@/types"
 
 export function AdminSettingsTab() {
   const { folders, isLoading, add, remove, refetch } = useGalleryFolders()
@@ -46,6 +46,9 @@ export function AdminSettingsTab() {
   const [isLlmLoading, setIsLlmLoading] = useState(false)
   const [isLlmSaving, setIsLlmSaving] = useState(false)
   const [llmFormDirty, setLlmFormDirty] = useState(false)
+  const [availableModels, setAvailableModels] = useState<LlmModelDTO[]>([])
+  const [isModelsLoading, setIsModelsLoading] = useState(false)
+  const [showModelInput, setShowModelInput] = useState(false)
 
   const loadTrashInfo = useCallback(() => {
     fetchTrashInfo()
@@ -118,6 +121,23 @@ export function AdminSettingsTab() {
   const handleLlmFieldChange = useCallback((field: keyof LlmSettingsDTO, value: string | boolean) => {
     setLlmSettings((prev) => ({ ...prev, [field]: value }))
     setLlmFormDirty(true)
+  }, [])
+
+  const handleLoadModels = useCallback(async () => {
+    setIsModelsLoading(true)
+    try {
+      const response = await fetchLlmModels()
+      if (response.success && response.models.length > 0) {
+        setAvailableModels(response.models)
+        toast.success(`Загружено ${response.models.length} моделей`)
+      } else {
+        toast.error(response.error || "Не удалось загрузить список моделей")
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Не удалось загрузить список моделей")
+    } finally {
+      setIsModelsLoading(false)
+    }
   }, [])
 
   useEffect(() => {
@@ -457,13 +477,72 @@ export function AdminSettingsTab() {
 
                 {/* Model */}
                 <div className="space-y-2">
-                  <Label htmlFor="llm-model">{t("llm_ocr.model")}</Label>
-                  <Input
-                    id="llm-model"
-                    placeholder={llmSettings.provider === "ollama" ? "minicpm-v" : "gpt-4-vision-preview"}
-                    value={llmSettings.model}
-                    onChange={(e) => handleLlmFieldChange("model", e.target.value)}
-                  />
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="llm-model">{t("llm_ocr.model")}</Label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleLoadModels}
+                      disabled={isModelsLoading}
+                      className="h-6 px-2 text-xs"
+                    >
+                      {isModelsLoading ? (
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="mr-1 h-3 w-3" />
+                      )}
+                      Загрузить модели
+                    </Button>
+                  </div>
+
+                  {/* Model dropdown */}
+                  {availableModels.length > 0 && !showModelInput ? (
+                    <div className="space-y-2">
+                      <Select
+                        value={llmSettings.model}
+                        onValueChange={(value) => handleLlmFieldChange("model", value)}
+                      >
+                        <SelectTrigger id="llm-model">
+                          <SelectValue placeholder="Выберите модель" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableModels.map((model) => (
+                            <SelectItem key={model.id} value={model.id}>
+                              {model.name}
+                              {model.size ? ` (${(model.size / 1073741824).toFixed(1)} GB)` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="px-0 h-auto text-xs"
+                        onClick={() => setShowModelInput(true)}
+                      >
+                        Ввести название модели вручную
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Input
+                        id="llm-model"
+                        placeholder={llmSettings.provider === "ollama" ? "minicpm-v" : "gpt-4-vision-preview"}
+                        value={llmSettings.model}
+                        onChange={(e) => handleLlmFieldChange("model", e.target.value)}
+                      />
+                      {availableModels.length > 0 && showModelInput && (
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="px-0 h-auto text-xs"
+                          onClick={() => setShowModelInput(false)}
+                        >
+                          Выбрать из списка доступных моделей
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Enable/Disable Checkbox */}

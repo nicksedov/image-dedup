@@ -43,6 +43,7 @@ import type {
   LlmOcrRequest,
   LlmOcrResponse,
   LlmOcrDataResponse,
+  LlmModelsResponse,
 } from "@/types"
 
 export function fetchDuplicates(page: number, pageSize: number): Promise<DuplicatesResponse> {
@@ -284,4 +285,8 @@ export function recognizeWithLlm(req: LlmOcrRequest): Promise<LlmOcrResponse> {
 
 export function fetchLlmRecognition(path: string): Promise<LlmOcrDataResponse> {
   return apiGet<LlmOcrDataResponse>("/api/llm/recognition", { path })
+}
+
+export function fetchLlmModels(): Promise<LlmModelsResponse> {
+  return apiGet<LlmModelsResponse>("/api/llm/models")
 }

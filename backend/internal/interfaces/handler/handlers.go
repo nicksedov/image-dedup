@@ -1622,3 +1622,64 @@ func (s *Server) handleGetLlmRecognition(c *gin.Context) {
 		CreatedAt:        recognition.CreatedAt.Format("2006-01-02 15:04:05"),
 	})
 }
+
+// handleGetLlmModels returns a list of available LLM models from the configured server
+func (s *Server) handleGetLlmModels(c *gin.Context) {
+	// Get LLM settings
+	var settings domain.LlmSettings
+	if err := s.db.First(&settings).Error; err != nil {
+		c.JSON(http.StatusNotFound, dto.LlmModelsResponse{
+			Success:  false,
+			Error:    "LLM settings not configured",
+			Provider: "",
+		})
+		return
+	}
+
+	if !settings.Enabled {
+		c.JSON(http.StatusServiceUnavailable, dto.LlmModelsResponse{
+			Success:  false,
+			Error:    "LLM recognition is not enabled",
+			Provider: settings.Provider,
+		})
+		return
+	}
+
+	// Create LLM client
+	llmClient, err := llm.NewClient(settings.Provider, settings.ApiUrl, settings.ApiKey, settings.Model)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.LlmModelsResponse{
+			Success:  false,
+			Error:    err.Error(),
+			Provider: settings.Provider,
+		})
+		return
+	}
+
+	// Fetch models
+	models, err := llmClient.ListModels()
+	if err != nil {
+		c.JSON(http.StatusOK, dto.LlmModelsResponse{
+			Success:  false,
+			Error:    err.Error(),
+			Provider: settings.Provider,
+		})
+		return
+	}
+
+	// Convert to DTO
+	modelDTOs := make([]dto.LlmModelDTO, len(models))
+	for i, m := range models {
+		modelDTOs[i] = dto.LlmModelDTO{
+			ID:   m.ID,
+			Name: m.Name,
+			Size: m.Size,
+		}
+	}
+
+	c.JSON(http.StatusOK, dto.LlmModelsResponse{
+		Success:  true,
+		Models:   modelDTOs,
+		Provider: settings.Provider,
+	})
+}

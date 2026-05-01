@@ -369,6 +369,21 @@ type UpdateLlmSettingsRequest struct {
 	Enabled  bool   `json:"enabled"`
 }
 
+// LlmModelDTO represents an available LLM model
+type LlmModelDTO struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Size int64  `json:"size,omitempty"`
+}
+
+// LlmModelsResponse for GET /api/llm/models
+type LlmModelsResponse struct {
+	Success  bool          `json:"success"`
+	Models   []LlmModelDTO `json:"models"`
+	Error    string        `json:"error,omitempty"`
+	Provider string        `json:"provider"`
+}
+
 // --- LLM OCR API ---
 
 // LlmOcrRequest for POST /api/llm/recognize

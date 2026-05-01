@@ -453,3 +453,16 @@ export interface LlmOcrDataResponse {
   error?: string
   createdAt?: string
 }
+
+export interface LlmModelDTO {
+  id: string
+  name: string
+  size?: number
+}
+
+export interface LlmModelsResponse {
+  success: boolean
+  models: LlmModelDTO[]
+  error?: string
+  provider: string
+}
