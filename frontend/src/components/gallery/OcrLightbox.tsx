@@ -221,7 +221,7 @@ export function OcrLightbox({ imagePath, onClose }: OcrLightboxProps) {
 
   return (
     <Dialog open={imagePath !== null} onOpenChange={() => handleClose()}>
-      <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 bg-black/95 border-0 overflow-hidden">
+      <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 bg-black/95 border-0 flex flex-col">
         <DialogHeader className="absolute top-4 left-4 right-16 z-50">
           <DialogTitle className="text-white text-lg">
             {t("lightbox.ocrTitle")}
