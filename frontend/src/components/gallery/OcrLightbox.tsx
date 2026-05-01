@@ -27,24 +27,37 @@ export function OcrLightbox({ imagePath, onClose }: OcrLightboxProps) {
   // Load OCR data when lightbox opens
   useEffect(() => {
     if (!imagePath) {
-      setOcrData(null)
-      setLlmData(null)
-      setImageLoaded(false)
-      setImageDimensions(null)
-      setDisplayDimensions(null)
+      // Reset all state when no image is selected
+      const resetState = () => {
+        setOcrData(null)
+        setLlmData(null)
+        setImageLoaded(false)
+        setImageDimensions(null)
+        setDisplayDimensions(null)
+      }
+      resetState()
       return
     }
 
+    let isMounted = true
     setLoading(true)
     Promise.all([
       fetchOcrData(imagePath).catch(() => null),
       fetchLlmRecognition(imagePath).catch(() => null),
     ]).then(([ocr, llm]) => {
-      setOcrData(ocr)
-      setLlmData(llm)
+      if (isMounted) {
+        setOcrData(ocr)
+        setLlmData(llm)
+      }
     }).finally(() => {
-      setLoading(false)
+      if (isMounted) {
+        setLoading(false)
+      }
     })
+
+    return () => {
+      isMounted = false
+    }
   }, [imagePath])
 
   // Handle recognize button click
