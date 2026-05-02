@@ -44,21 +44,6 @@ func main() {
 
 	fmt.Println("Database connected successfully!")
 
-	// Run OCR migration for existing classifications
-	fmt.Println("Running OCR migration for existing classifications...")
-	migrationManager := imaging.NewOcrMigrationManager(db)
-	if needsMigration, err := migrationManager.EnsureMigrationNeeded(); err == nil && needsMigration {
-		if err := migrationManager.RunMigration(); err != nil {
-			log.Printf("OCR migration failed: %v", err)
-		} else {
-			fmt.Println("OCR migration completed successfully")
-		}
-	} else if err != nil {
-		log.Printf("Failed to check migration status: %v", err)
-	} else {
-		fmt.Println("OCR migration: no data needs migration")
-	}
-
 	// Initialize offline geocoder
 	fmt.Println("Initializing offline geocoder...")
 	geoc := geocoder.NewGeocoder()

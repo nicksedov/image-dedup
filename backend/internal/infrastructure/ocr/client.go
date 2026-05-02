@@ -52,6 +52,8 @@ type ClassifyResponse struct {
 	TokenCount         int           `json:"token_count"`
 	Boxes              []BoundingBox `json:"boxes"`
 	Angle              int           `json:"angle"`
+	BoundingBoxWidth   int           `json:"bounding_box_width"`
+	BoundingBoxHeight  int           `json:"bounding_box_height"`
 	ScaleFactor        float32       `json:"scale_factor"`
 	IsTextDocument     bool          `json:"is_text_document"`
 }

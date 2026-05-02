@@ -93,6 +93,8 @@ type OcrClassification struct {
 	TokenCount         int       `json:"tokenCount"`
 	Angle              int       `json:"angle"`
 	ScaleFactor        float32   `json:"scaleFactor"`
+	BoundingBoxWidth   int       `json:"boundingBoxWidth"`
+	BoundingBoxHeight  int       `json:"boundingBoxHeight"`
 	CreatedAt          time.Time `json:"createdAt"`
 	UpdatedAt          time.Time `json:"updatedAt"`
 }

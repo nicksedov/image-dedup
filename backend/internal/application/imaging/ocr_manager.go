@@ -174,6 +174,8 @@ func (om *OcrManager) processUnclassified() {
 					TokenCount:         ocrResp.TokenCount,
 					Angle:              ocrResp.Angle,
 					ScaleFactor:        ocrResp.ScaleFactor,
+					BoundingBoxWidth:   ocrResp.BoundingBoxWidth,
+					BoundingBoxHeight:  ocrResp.BoundingBoxHeight,
 				}
 
 				// Create bounding box records only for text documents
