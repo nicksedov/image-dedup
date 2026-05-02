@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"sync"
+	"time"
 
 	"image-toolkit/internal/domain"
 	"image-toolkit/internal/infrastructure/ocr"
@@ -24,7 +25,7 @@ type OcrManager struct {
 	totalFiles     int
 	db             *gorm.DB
 	ocrClient      ocr.Client
-	workers        int
+	maxWorkers     int // Max concurrent OCR requests
 }
 
 // OcrStatusResponse represents the OCR processing status
@@ -37,11 +38,11 @@ type OcrStatusResponse struct {
 }
 
 // NewOcrManager creates a new OCR manager
-func NewOcrManager(db *gorm.DB, ocrClient ocr.Client, workers int) *OcrManager {
+func NewOcrManager(db *gorm.DB, ocrClient ocr.Client, maxWorkers int) *OcrManager {
 	return &OcrManager{
-		db:        db,
-		ocrClient: ocrClient,
-		workers:   workers,
+		db:         db,
+		ocrClient:  ocrClient,
+		maxWorkers: maxWorkers,
 	}
 }
 
@@ -153,7 +154,7 @@ func (om *OcrManager) processUnclassified(incremental bool) {
 	om.progress = fmt.Sprintf("Found %d images to classify", len(images))
 	om.mu.Unlock()
 
-	// Process images using worker pool
+	// Process images with limited concurrency using semaphore
 	type ocrResult struct {
 		image          domain.ImageFile
 		classification *domain.OcrClassification
@@ -161,91 +162,121 @@ func (om *OcrManager) processUnclassified(incremental bool) {
 		err            error
 	}
 
-	jobs := make(chan domain.ImageFile, len(images))
+	// Create semaphore to limit concurrent OCR requests
+	sem := make(chan struct{}, om.maxWorkers)
+
 	results := make(chan ocrResult, len(images))
 
 	var wg sync.WaitGroup
-	for w := 0; w < om.workers; w++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for img := range jobs {
-				result := ocrResult{image: img}
+	for _, img := range images {
+		// Check for stop request before acquiring semaphore
+		om.mu.RLock()
+		stop := om.stopRequested
+		om.mu.RUnlock()
+		if stop {
+			break
+		}
 
-				// Open image file
-				file, err := os.Open(img.Path)
-				if err != nil {
-					result.err = fmt.Errorf("failed to open file: %w", err)
-					results <- result
-					continue
+		// Acquire semaphore with stop check
+		acquired := false
+		for !acquired {
+			select {
+			case sem <- struct{}{}:
+				acquired = true
+			default:
+				// Check if we should stop while waiting
+				om.mu.RLock()
+				stop = om.stopRequested
+				om.mu.RUnlock()
+				if stop {
+					break
 				}
-
-				// Determine content type based on extension
-				contentType := "image/jpeg"
-				if len(img.Path) > 4 {
-					ext := img.Path[len(img.Path)-4:]
-					if ext == ".png" {
-						contentType = "image/png"
-					}
-				}
-
-				// Call OCR API
-				ctx := context.Background()
-				ocrResp, err := om.ocrClient.Classify(ctx, file, contentType, ocr.DefaultClassifyParams())
-				file.Close()
-
-				if err != nil {
-					result.err = fmt.Errorf("OCR classification failed: %w", err)
-					results <- result
-					continue
-				}
-
-				// Create classification record
-				classification := &domain.OcrClassification{
-					ImageFileID:        img.ID,
-					IsTextDocument:     ocrResp.IsTextDocument,
-					MeanConfidence:     ocrResp.MeanConfidence,
-					WeightedConfidence: ocrResp.WeightedConfidence,
-					TokenCount:         ocrResp.TokenCount,
-					Angle:              ocrResp.Angle,
-					ScaleFactor:        ocrResp.ScaleFactor,
-					BoundingBoxWidth:   ocrResp.BoundingBoxWidth,
-					BoundingBoxHeight:  ocrResp.BoundingBoxHeight,
-				}
-
-				// Create bounding box records only for text documents
-				var boxes []domain.OcrBoundingBox
-				if ocrResp.IsTextDocument && len(ocrResp.Boxes) > 0 {
-					// We need to save the classification first to get its ID
-					// So we'll handle boxes in a separate step
-					for _, box := range ocrResp.Boxes {
-						boxes = append(boxes, domain.OcrBoundingBox{
-							X:          box.X,
-							Y:          box.Y,
-							Width:      box.Width,
-							Height:     box.Height,
-							Word:       box.Word,
-							Confidence: box.Confidence,
-						})
-					}
-				}
-
-				result.classification = classification
-				result.boxes = boxes
-				results <- result
+				// Brief sleep before retry (50ms)
+				time.Sleep(50 * time.Millisecond)
 			}
-		}()
+		}
+		if stop {
+			break
+		}
+
+		wg.Add(1)
+		go func(image domain.ImageFile) {
+			defer wg.Done()
+			defer func() { <-sem }() // Release semaphore
+
+			result := ocrResult{image: image}
+
+			// Check for stop before processing
+			om.mu.RLock()
+			stopNow := om.stopRequested
+			om.mu.RUnlock()
+			if stopNow {
+				return
+			}
+
+			// Open image file
+			file, err := os.Open(image.Path)
+			if err != nil {
+				result.err = fmt.Errorf("failed to open file: %w", err)
+				results <- result
+				return
+			}
+
+			// Determine content type based on extension
+			contentType := "image/jpeg"
+			if len(image.Path) > 4 {
+				ext := image.Path[len(image.Path)-4:]
+				if ext == ".png" {
+					contentType = "image/png"
+				}
+			}
+
+			// Call OCR API
+			ctx := context.Background()
+			ocrResp, err := om.ocrClient.Classify(ctx, file, contentType, ocr.DefaultClassifyParams())
+			file.Close()
+
+			if err != nil {
+				result.err = fmt.Errorf("OCR classification failed: %w", err)
+				results <- result
+				return
+			}
+
+			// Create classification record
+			classification := &domain.OcrClassification{
+				ImageFileID:        image.ID,
+				IsTextDocument:     ocrResp.IsTextDocument,
+				MeanConfidence:     ocrResp.MeanConfidence,
+				WeightedConfidence: ocrResp.WeightedConfidence,
+				TokenCount:         ocrResp.TokenCount,
+				Angle:              ocrResp.Angle,
+				ScaleFactor:        ocrResp.ScaleFactor,
+				BoundingBoxWidth:   ocrResp.BoundingBoxWidth,
+				BoundingBoxHeight:  ocrResp.BoundingBoxHeight,
+			}
+
+			// Create bounding box records only for text documents
+			var boxes []domain.OcrBoundingBox
+			if ocrResp.IsTextDocument && len(ocrResp.Boxes) > 0 {
+				for _, box := range ocrResp.Boxes {
+					boxes = append(boxes, domain.OcrBoundingBox{
+						X:          box.X,
+						Y:          box.Y,
+						Width:      box.Width,
+						Height:     box.Height,
+						Word:       box.Word,
+						Confidence: box.Confidence,
+					})
+				}
+			}
+
+			result.classification = classification
+			result.boxes = boxes
+			results <- result
+		}(img)
 	}
 
-	// Send jobs
-	go func() {
-		for _, img := range images {
-			jobs <- img
-		}
-		close(jobs)
-	}()
-
-	// Close results channel when all workers finish
+	// Close results channel when all goroutines finish
 	go func() {
 		wg.Wait()
 		close(results)

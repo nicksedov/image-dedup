@@ -75,8 +75,8 @@ func main() {
 	var ocrManager *imaging.OcrManager
 	if cfg.OCREnabled {
 		ocrClient := ocr.NewClient(cfg.OCRHost, cfg.OCRPort)
-		ocrManager = imaging.NewOcrManager(db, ocrClient, cfg.ScanWorkers)
-		fmt.Printf("OCR manager initialized: workers=%d\n", cfg.ScanWorkers)
+		ocrManager = imaging.NewOcrManager(db, ocrClient, cfg.OCRConcurrentRequests)
+		fmt.Printf("OCR manager initialized: max concurrent requests=%d\n", cfg.OCRConcurrentRequests)
 	}
 
 	// Wire scan complete callback to trigger metadata extraction and OCR classification

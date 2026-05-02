@@ -28,6 +28,7 @@ type AppConfig struct {
 	OCRHost            string
 	OCRPort            string
 	OCRCheckInterval   int
+	OCRConcurrentRequests int // Max concurrent OCR requests (default: 4)
 
 	// Auth configuration
 	BootstrapLogin      string
@@ -84,6 +85,7 @@ func LoadConfig() *AppConfig {
 		OCRHost:             getEnv("OCR_HOST", "localhost"),
 		OCRPort:             getEnv("OCR_PORT", "8080"),
 		OCRCheckInterval:    getEnvInt("OCR_CHECK_INTERVAL", 10),
+		OCRConcurrentRequests: getEnvInt("OCR_CONCURRENT_REQUESTS", 4),
 		BootstrapLogin:      getEnv("BOOTSTRAP_LOGIN", "admin"),
 		BootstrapPassword:   getEnv("BOOTSTRAP_PASSWORD", "admin"),
 		SessionIdleHours:    getEnvInt("SESSION_IDLE_HOURS", 720),   // 30 days
