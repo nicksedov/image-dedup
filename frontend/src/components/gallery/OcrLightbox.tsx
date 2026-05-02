@@ -205,10 +205,8 @@ export function OcrLightbox({ imagePath, onClose }: OcrLightboxProps) {
   }, [imageLoaded])
 
   // Calculate scale factor for bounding boxes
-  const baseScaleX = imageDimensions && displayDimensions ? displayDimensions.width / imageDimensions.width : 1
-  const baseScaleY = imageDimensions && displayDimensions ? displayDimensions.height / imageDimensions.height : 1
-  const scaleX = baseScaleX
-  const scaleY = baseScaleY
+  const scaleX = imageDimensions && displayDimensions ? displayDimensions.width / imageDimensions.width : 1
+  const scaleY = imageDimensions && displayDimensions ? displayDimensions.height / imageDimensions.height : 1
 
   const angle = ocrData?.angle || 0
   const ocrScaleFactor = ocrData?.scaleFactor || 1
@@ -224,11 +222,11 @@ export function OcrLightbox({ imagePath, onClose }: OcrLightboxProps) {
   }
 
   // Extract filename from image path
-  const getFileName = () => {
+  const getFileName = useCallback(() => {
     if (!imagePath) return "document"
     const base = imagePath.split(/[\\/]/).pop() || "document"
     return base.replace(/\.[^.]+$/, "")
-  }
+  }, [imagePath])
 
   // Save as markdown file
   const handleSaveMd = useCallback(() => {
@@ -240,7 +238,7 @@ export function OcrLightbox({ imagePath, onClose }: OcrLightboxProps) {
     a.download = `${getFileName()}.md`
     a.click()
     URL.revokeObjectURL(url)
-  }, [llmData, imagePath])
+  }, [llmData, getFileName])
 
   // Save as HTML file
   const handleSaveHtml = useCallback(() => {
@@ -285,7 +283,7 @@ ${html}
     a.download = `${getFileName()}.html`
     a.click()
     URL.revokeObjectURL(url)
-  }, [llmData, imagePath])
+  }, [llmData, getFileName])
 
   return (
     <Dialog open={imagePath !== null} onOpenChange={() => handleClose()}>
