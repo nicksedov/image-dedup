@@ -251,6 +251,14 @@ export function startOcrClassification(): Promise<{ message: string }> {
   return apiPost<{ message: string }>("/api/ocr/classify")
 }
 
+export function startOcrClassificationChanges(): Promise<{ message: string }> {
+  return apiPost<{ message: string }>("/api/ocr/classify-changes")
+}
+
+export function stopOcrClassification(): Promise<{ message: string }> {
+  return apiPost<{ message: string }>("/api/ocr/stop")
+}
+
 export function fetchOcrClassificationStatus(): Promise<OcrClassificationStatusResponse> {
   return apiGet<OcrClassificationStatusResponse>("/api/ocr/classify-status")
 }

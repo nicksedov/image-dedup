@@ -11,12 +11,12 @@ import { FolderList } from "@/components/settings/FolderList"
 import { ScanProgressBanner } from "@/components/ScanProgressBanner"
 import { useGalleryFolders } from "@/hooks/useGalleryFolders"
 import { useScanStatus } from "@/hooks/useScanStatus"
-import { fetchTrashInfo, cleanTrash, updateSettings, fetchOCRStatus, triggerScan, triggerFastScan, fetchLlmSettings, updateLlmSettings, fetchLlmModels } from "@/api/endpoints"
+import { fetchTrashInfo, cleanTrash, updateSettings, fetchOCRStatus, startOcrClassification, startOcrClassificationChanges, stopOcrClassification, fetchOcrClassificationStatus, triggerScan, triggerFastScan, fetchLlmSettings, updateLlmSettings, fetchLlmModels } from "@/api/endpoints"
 import { useSettings } from "@/providers/useSettings"
 import { useAuth } from "@/providers/AuthProvider"
-import { RefreshCw, Trash2, Shield, Loader2, Zap, Wand2 } from "lucide-react"
+import { RefreshCw, Trash2, Shield, Loader2, Zap, Wand2, Play, Square } from "lucide-react"
 import { useTranslation, type TranslationKey } from "@/i18n"
-import type { OCRStatus, LlmSettingsDTO, LlmModelDTO } from "@/types"
+import type { OCRStatus, OcrClassificationStatusResponse, LlmSettingsDTO, LlmModelDTO } from "@/types"
 
 export function AdminSettingsTab() {
   const { folders, isLoading, add, remove, refetch } = useGalleryFolders()
@@ -33,6 +33,8 @@ export function AdminSettingsTab() {
   const [isSavingTrash, setIsSavingTrash] = useState(false)
   const [ocrStatus, setOcrStatus] = useState<OCRStatus | null>(null)
   const [isOcrLoading, setIsOcrLoading] = useState(false)
+  const [ocrScanning, setOcrScanning] = useState(false)
+  const [ocrScanStatus, setOcrScanStatus] = useState<OcrClassificationStatusResponse | null>(null)
 
   // LLM Settings state
   const [llmSettings, setLlmSettings] = useState<LlmSettingsDTO>({
@@ -77,6 +79,65 @@ export function AdminSettingsTab() {
       setIsOcrLoading(false)
     }
   }, [])
+
+  // Poll OCR scan status when scanning
+  useEffect(() => {
+    if (!ocrScanning) return
+
+    let cancelled = false
+
+    const checkStatus = async () => {
+      try {
+        const status = await fetchOcrClassificationStatus()
+        if (cancelled) return
+        setOcrScanStatus(status)
+        setOcrScanning(status.processing)
+      } catch (err) {
+        console.error("Failed to check OCR scan status:", err)
+      }
+    }
+
+    checkStatus()
+    const interval = setInterval(() => {
+      if (!cancelled) {
+        checkStatus()
+      }
+    }, 2000)
+
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [ocrScanning])
+
+  const handleStartOcrScanAll = useCallback(async () => {
+    try {
+      await startOcrClassification()
+      setOcrScanning(true)
+      toast.success(t("api.ocr.started"))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("api.ocr.failed"))
+    }
+  }, [t])
+
+  const handleStartOcrScanChanges = useCallback(async () => {
+    try {
+      await startOcrClassificationChanges()
+      setOcrScanning(true)
+      toast.success(t("api.ocr.started"))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("api.ocr.failed"))
+    }
+  }, [t])
+
+  const handleStopOcrScan = useCallback(async () => {
+    try {
+      await stopOcrClassification()
+      toast.info("OCR scanning stopping...")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("api.ocr.failed"))
+    }
+  }, [t])
 
   const loadLlmSettings = useCallback(async () => {
     try {
@@ -369,7 +430,7 @@ export function AdminSettingsTab() {
         </Card>
       )}
 
-      {/* OCR Status - Admin Only */}
+      {/* OCR Document Search - Admin Only */}
       {isAdmin && (
         <Card>
           <CardHeader>
@@ -379,8 +440,9 @@ export function AdminSettingsTab() {
             </CardTitle>
             <CardDescription>{t("adminPanel.ocr.description")}</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
+          <CardContent className="space-y-4">
+            {/* OCR Service Status */}
+            <div className="flex items-center justify-between rounded-lg border p-3">
               <div className="space-y-1">
                 <div className="text-sm font-medium">{t("adminPanel.ocr.status")}</div>
                 {isOcrLoading ? (
@@ -411,6 +473,54 @@ export function AdminSettingsTab() {
               <Button variant="outline" size="sm" onClick={loadOCRStatus} disabled={isOcrLoading}>
                 {isOcrLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
               </Button>
+            </div>
+
+            {/* OCR Scan Progress */}
+            {ocrScanning && ocrScanStatus && (
+              <div className="p-4 bg-muted rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">
+                    {t("ocr.filesProcessed", {
+                      count: ocrScanStatus.filesProcessed,
+                      total: ocrScanStatus.totalFiles,
+                    })}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">{ocrScanStatus.progress}</p>
+              </div>
+            )}
+
+            {/* Scan Buttons */}
+            <div className="flex gap-2">
+              <Button
+                onClick={handleStartOcrScanChanges}
+                disabled={ocrScanning}
+                variant="outline"
+                size="sm"
+              >
+                <Zap className={`mr-1.5 h-3.5 w-3.5 ${ocrScanning ? "animate-spin" : ""}`} />
+                {t("adminPanel.ocr.scanChanges")}
+              </Button>
+              <Button
+                onClick={handleStartOcrScanAll}
+                disabled={ocrScanning}
+                variant="outline"
+                size="sm"
+              >
+                <Play className={`mr-1.5 h-3.5 w-3.5 ${ocrScanning ? "animate-spin" : ""}`} />
+                {t("adminPanel.ocr.scanAll")}
+              </Button>
+              {ocrScanning && (
+                <Button
+                  onClick={handleStopOcrScan}
+                  variant="destructive"
+                  size="sm"
+                >
+                  <Square className="mr-1.5 h-3.5 w-3.5" />
+                  {t("adminPanel.ocr.stopScanning")}
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

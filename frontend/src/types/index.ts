@@ -404,6 +404,7 @@ export interface OcrDataResponse {
 
 export interface OcrClassificationStatusResponse {
   processing: boolean
+  incremental: boolean
   progress: string
   filesProcessed: number
   totalFiles: number

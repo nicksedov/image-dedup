@@ -17,6 +17,8 @@ import (
 type OcrManager struct {
 	mu             sync.RWMutex
 	isProcessing   bool
+	stopRequested  bool
+	incremental    bool
 	progress       string
 	filesProcessed int
 	totalFiles     int
@@ -28,6 +30,7 @@ type OcrManager struct {
 // OcrStatusResponse represents the OCR processing status
 type OcrStatusResponse struct {
 	Processing     bool   `json:"processing"`
+	Incremental    bool   `json:"incremental"`
 	Progress       string `json:"progress"`
 	FilesProcessed int    `json:"filesProcessed"`
 	TotalFiles     int    `json:"totalFiles"`
@@ -43,19 +46,25 @@ func NewOcrManager(db *gorm.DB, ocrClient ocr.Client, workers int) *OcrManager {
 }
 
 // StartClassification starts the OCR classification process in background
-func (om *OcrManager) StartClassification() error {
+func (om *OcrManager) StartClassification(incremental bool) error {
 	om.mu.Lock()
 	if om.isProcessing {
 		om.mu.Unlock()
 		return fmt.Errorf("OCR classification already in progress")
 	}
 	om.isProcessing = true
-	om.progress = "Starting OCR classification..."
+	om.stopRequested = false
+	om.incremental = incremental
+	if incremental {
+		om.progress = "Starting OCR classification (changes only)..."
+	} else {
+		om.progress = "Starting OCR classification..."
+	}
 	om.filesProcessed = 0
 	om.totalFiles = 0
 	om.mu.Unlock()
 
-	go om.processUnclassified()
+	go om.processUnclassified(incremental)
 
 	return nil
 }
@@ -67,6 +76,7 @@ func (om *OcrManager) GetStatus() OcrStatusResponse {
 
 	return OcrStatusResponse{
 		Processing:     om.isProcessing,
+		Incremental:    om.incremental,
 		Progress:       om.progress,
 		FilesProcessed: om.filesProcessed,
 		TotalFiles:     om.totalFiles,
@@ -80,25 +90,46 @@ func (om *OcrManager) IsProcessing() bool {
 	return om.isProcessing
 }
 
+// StopClassification requests a graceful stop of the current OCR classification
+func (om *OcrManager) StopClassification() {
+	om.mu.Lock()
+	defer om.mu.Unlock()
+	if om.isProcessing {
+		om.stopRequested = true
+		om.progress = "Stopping OCR classification..."
+	}
+}
+
 // processUnclassified finds images without OCR classification and processes them
-func (om *OcrManager) processUnclassified() {
+func (om *OcrManager) processUnclassified(incremental bool) {
 	defer func() {
 		om.mu.Lock()
 		om.isProcessing = false
-		om.progress = "OCR classification complete"
+		if om.stopRequested {
+			om.progress = "OCR classification stopped"
+		} else {
+			om.progress = "OCR classification complete"
+		}
 		om.mu.Unlock()
 	}()
 
-	// Find images without classification or with stale classification
-	var images []domain.ImageFile
+	// Build query based on mode
 	query := om.db.Table("image_files").
 		Select("image_files.*").
-		Joins("LEFT JOIN ocr_classifications ON ocr_classifications.image_file_id = image_files.id").
-		Where("ocr_classifications.id IS NULL OR ocr_classifications.updated_at < image_files.updated_at").
-		Order("image_files.id")
+		Joins("LEFT JOIN ocr_classifications ON ocr_classifications.image_file_id = image_files.id")
 
+	if incremental {
+		// Only new files (no classification yet) or files modified after last classification
+		query = query.Where("ocr_classifications.id IS NULL OR ocr_classifications.updated_at < image_files.updated_at")
+	} else {
+		// All files: reclassify everything
+		query = query.Where("1=1")
+	}
+	query = query.Order("image_files.id")
+
+	var images []domain.ImageFile
 	if err := query.Find(&images).Error; err != nil {
-		log.Printf("OCR: failed to query unclassified images: %v", err)
+		log.Printf("OCR: failed to query images: %v", err)
 		return
 	}
 
@@ -108,7 +139,11 @@ func (om *OcrManager) processUnclassified() {
 
 	if len(images) == 0 {
 		om.mu.Lock()
-		om.progress = "No unclassified images found"
+		if incremental {
+			om.progress = "No new or changed images found"
+		} else {
+			om.progress = "No images found"
+		}
 		om.isProcessing = false
 		om.mu.Unlock()
 		return
@@ -224,6 +259,14 @@ func (om *OcrManager) processUnclassified() {
 	count := 0
 
 	for result := range results {
+		// Check for graceful stop request
+		om.mu.RLock()
+		stop := om.stopRequested
+		om.mu.RUnlock()
+		if stop {
+			break
+		}
+
 		count++
 
 		if result.err != nil {
@@ -261,7 +304,11 @@ func (om *OcrManager) processUnclassified() {
 	}
 
 	om.mu.Lock()
-	om.progress = fmt.Sprintf("OCR classification complete: %d/%d images processed", count, om.totalFiles)
+	if om.stopRequested {
+		om.progress = fmt.Sprintf("OCR classification stopped: %d/%d images processed", count, om.totalFiles)
+	} else {
+		om.progress = fmt.Sprintf("OCR classification complete: %d/%d images processed", count, om.totalFiles)
+	}
 	om.mu.Unlock()
 }
 

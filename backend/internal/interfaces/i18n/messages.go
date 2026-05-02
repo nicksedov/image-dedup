@@ -97,6 +97,7 @@ const (
 	MsgOcrStarted           MessageKey = "ocr.started"
 	MsgOcrFailed            MessageKey = "ocr.failed"
 	MsgOcrAlreadyRunning    MessageKey = "ocr.already_running"
+	MsgOcrNotRunning        MessageKey = "ocr.not_running"
 	MsgOcrImagePathRequired MessageKey = "ocr.image_path_required"
 	MsgOcrDataNotFound      MessageKey = "ocr.data_not_found"
 

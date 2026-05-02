@@ -85,7 +85,7 @@ func main() {
 			log.Printf("Metadata extraction not started: %v", err)
 		}
 		if cfg.OCREnabled && ocrManager != nil {
-			if err := ocrManager.StartClassification(); err != nil {
+			if err := ocrManager.StartClassification(false); err != nil {
 				log.Printf("OCR classification not started: %v", err)
 			}
 		}

@@ -73,6 +73,8 @@ func (s *Server) SetupRouter(authMiddleware *middleware.AuthMiddleware, csrfProt
 			protected.GET("/metadata-status", s.handleGetMetadataStatus)
 			protected.GET("/ocr-status", s.handleGetOCRStatus)
 			protected.POST("/ocr/classify", s.handleStartOcrClassification)
+			protected.POST("/ocr/classify-changes", s.handleStartOcrClassificationIncremental)
+			protected.POST("/ocr/stop", s.handleStopOcrClassification)
 			protected.GET("/ocr/classify-status", s.handleGetOcrClassificationStatus)
 			protected.GET("/ocr/documents", s.handleGetOcrDocuments)
 			protected.GET("/ocr/data", s.handleGetOcrData)

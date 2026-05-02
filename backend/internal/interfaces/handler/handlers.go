@@ -1251,13 +1251,51 @@ func (s *Server) handleStartOcrClassification(c *gin.Context) {
 		return
 	}
 
-	if err := s.ocrManager.StartClassification(); err != nil {
+	// Default to full scan (non-incremental)
+	incremental := false
+	if err := s.ocrManager.StartClassification(incremental); err != nil {
 		c.JSON(http.StatusConflict, i18n.ErrorResponse(i18n.MsgOcrAlreadyRunning))
 		return
 	}
 
 	c.JSON(http.StatusAccepted, dto.ScanResponse{
 		Message: string(i18n.MsgOcrStarted),
+	})
+}
+
+// handleStartOcrClassificationIncremental starts OCR classification for new/changed files only
+func (s *Server) handleStartOcrClassificationIncremental(c *gin.Context) {
+	if s.ocrManager == nil {
+		c.JSON(http.StatusServiceUnavailable, i18n.ErrorResponse(i18n.MsgOcrFailed))
+		return
+	}
+
+	if err := s.ocrManager.StartClassification(true); err != nil {
+		c.JSON(http.StatusConflict, i18n.ErrorResponse(i18n.MsgOcrAlreadyRunning))
+		return
+	}
+
+	c.JSON(http.StatusAccepted, dto.ScanResponse{
+		Message: string(i18n.MsgOcrStarted),
+	})
+}
+
+// handleStopOcrClassification requests a graceful stop of OCR classification
+func (s *Server) handleStopOcrClassification(c *gin.Context) {
+	if s.ocrManager == nil {
+		c.JSON(http.StatusServiceUnavailable, i18n.ErrorResponse(i18n.MsgOcrFailed))
+		return
+	}
+
+	if !s.ocrManager.IsProcessing() {
+		c.JSON(http.StatusConflict, i18n.ErrorResponse(i18n.MsgOcrNotRunning))
+		return
+	}
+
+	s.ocrManager.StopClassification()
+
+	c.JSON(http.StatusOK, dto.ScanResponse{
+		Message: "OCR classification stopping",
 	})
 }
 
