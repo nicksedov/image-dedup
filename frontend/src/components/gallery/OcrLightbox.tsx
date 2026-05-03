@@ -287,7 +287,7 @@ ${html}
 
   return (
     <Dialog open={imagePath !== null} onOpenChange={() => handleClose()}>
-      <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] p-0 bg-black/95 border-0 flex flex-col">
+      <DialogContent className="max-w-[95vw] w-[95vw] max-h-[90vh] p-0 overflow-hidden flex flex-col">
         <VisuallyHidden>
           <DialogTitle>{t("lightbox.ocrTitle")}</DialogTitle>
           <DialogDescription>{t("lightbox.ocrDescription")}</DialogDescription>
@@ -301,9 +301,9 @@ ${html}
           <X className="h-4 w-4" />
         </Button>
 
-        <div className="flex h-full">
-          {/* Image with bounding boxes - 50% width */}
-          <div className="w-[50%] flex items-center justify-center p-8 relative" ref={containerRef}>
+        <div className="flex flex-col md:flex-row h-full max-h-[85vh]">
+          {/* Image with bounding boxes */}
+          <div className="flex-1 flex items-center justify-center bg-black min-h-[300px] min-w-0 relative" ref={containerRef}>
             {loading && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-white" />
@@ -317,7 +317,7 @@ ${html}
                   ref={imageRef}
                   src={imageUrl}
                   alt={t("lightbox.alt")}
-                  className="max-w-full max-h-[75vh] object-contain"
+                  className="max-w-full max-h-[85vh] md:max-h-[85vh] object-contain"
                   onLoad={handleImageLoad}
                 />
               )}
@@ -349,102 +349,101 @@ ${html}
             </div>
           </div>
 
-          {/* Right panel - 50% width */}
-          <div className="w-[50%] bg-card border-l p-4 h-full flex flex-col">
+          {/* Right panel */}
+          <div className="w-full md:w-[300px] lg:w-[340px] md:min-w-[280px] border-t md:border-t-0 md:border-l bg-background overflow-y-auto max-h-[40vh] md:max-h-[85vh] shrink-0">
+            <div className="p-4">
             {recognizing ? (
-              <div className="flex flex-col items-center justify-center h-full">
+              <div className="flex flex-col items-center justify-center py-8">
                 <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
                 <p className="text-lg font-medium">{t("llm_ocr.recognizing")}</p>
               </div>
             ) : llmData?.found && llmData.success && llmData.markdownContent ? (
               /* LLM recognition result */
-              <div className="flex flex-col h-full">
-                <div className="flex-shrink-0 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">{t("llm_ocr.title")}</h3>
-                    <button
-                      onClick={handleRecognize}
-                      className="flex items-center gap-2 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90"
-                    >
-                      <Wand2 className="h-4 w-4" />
-                      {t("llm_ocr.recognizeButton")}
-                    </button>
-                  </div>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold">{t("llm_ocr.title")}</h3>
+                  <button
+                    onClick={handleRecognize}
+                    className="flex items-center gap-2 px-3 py-1.5 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                  >
+                    <Wand2 className="h-3.5 w-3.5" />
+                    {t("llm_ocr.recognizeButton")}
+                  </button>
+                </div>
 
-                  {/* Metadata */}
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t("llm_ocr.language")}:</span>
-                      <span className="font-medium">{llmData.language === "ru" ? "Русский" : "English"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t("llm_ocr.provider")}:</span>
-                      <span className="font-medium">{llmData.provider}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t("llm_ocr.model")}:</span>
-                      <span className="font-medium">{llmData.model}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t("llm_ocr.processingTime")}:</span>
-                      <span className="font-medium">{formatProcessingTime(llmData.processingTimeMs)}</span>
-                    </div>
-                    {imagePath && (
-                      <div>
-                        <span className="text-muted-foreground">{t("llm_ocr.filePath")}:</span>
-                        <p className="text-xs break-all mt-1">{imagePath}</p>
-                      </div>
-                    )}
+                {/* Metadata */}
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t("llm_ocr.language")}:</span>
+                    <span className="font-medium">{llmData.language === "ru" ? "Русский" : "English"}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t("llm_ocr.provider")}:</span>
+                    <span className="font-medium">{llmData.provider}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t("llm_ocr.model")}:</span>
+                    <span className="font-medium">{llmData.model}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t("llm_ocr.processingTime")}:</span>
+                    <span className="font-medium">{formatProcessingTime(llmData.processingTimeMs)}</span>
+                  </div>
+                  {imagePath && (
+                    <div>
+                      <span className="text-muted-foreground">{t("llm_ocr.filePath")}:</span>
+                      <p className="text-xs break-all mt-1">{imagePath}</p>
+                    </div>
+                  )}
+                </div>
 
-                  {/* Save buttons */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleSaveMd}
-                      className="flex items-center gap-2 px-3 py-1.5 text-sm bg-primary/10 hover:bg-primary/20 text-primary rounded transition-colors"
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      Save as .md
-                    </button>
-                    <button
-                      onClick={handleSaveHtml}
-                      className="flex items-center gap-2 px-3 py-1.5 text-sm bg-primary/10 hover:bg-primary/20 text-primary rounded transition-colors"
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      Save as .html
-                    </button>
-                  </div>
+                {/* Save buttons */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveMd}
+                    className="flex items-center gap-2 px-3 py-1.5 text-xs bg-primary/10 hover:bg-primary/20 text-primary rounded transition-colors"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Save as .md
+                  </button>
+                  <button
+                    onClick={handleSaveHtml}
+                    className="flex items-center gap-2 px-3 py-1.5 text-xs bg-primary/10 hover:bg-primary/20 text-primary rounded transition-colors"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Save as .html
+                  </button>
                 </div>
 
                 {/* Scrollable markdown container */}
-                <div className="flex-1 mt-4 overflow-y-auto min-h-0">
-                  <div className="p-4 bg-muted rounded-lg markdown-body">
+                <div className="overflow-y-auto min-h-0">
+                  <div className="p-3 bg-muted rounded-md markdown-body">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={
                       {
-                        h1: (props) => <h1 className="text-xl font-bold mt-4 mb-2" {...props} />,
-                        h2: (props) => <h2 className="text-lg font-bold mt-3 mb-2" {...props} />,
-                        h3: (props) => <h3 className="text-base font-bold mt-2 mb-1" {...props} />,
-                        p: (props) => <p className="mb-2 leading-relaxed" {...props} />,
-                        ul: (props) => <ul className="list-disc list-inside mb-2 space-y-1" {...props} />,
-                        ol: (props) => <ol className="list-decimal list-inside mb-2 space-y-1" {...props} />,
-                        li: (props) => <li className="text-sm" {...props} />,
+                        h1: (props) => <h1 className="text-base font-bold mt-3 mb-1.5" {...props} />,
+                        h2: (props) => <h2 className="text-sm font-bold mt-2.5 mb-1.5" {...props} />,
+                        h3: (props) => <h3 className="text-sm font-bold mt-2 mb-1" {...props} />,
+                        p: (props) => <p className="mb-1.5 text-sm leading-relaxed" {...props} />,
+                        ul: (props) => <ul className="list-disc list-inside mb-1.5 space-y-0.5" {...props} />,
+                        ol: (props) => <ol className="list-decimal list-inside mb-1.5 space-y-0.5" {...props} />,
+                        li: (props) => <li className="text-xs" {...props} />,
                         code: ({ className, ...props }) => {
                           const isInline = !className
                           return isInline
-                            ? <code className="bg-muted-foreground/20 px-1.5 py-0.5 rounded text-sm font-mono" {...props} />
-                            : <code className="block bg-muted-foreground/20 p-2 rounded text-sm font-mono overflow-x-auto" {...props} />
+                            ? <code className="bg-muted-foreground/20 px-1 py-0.5 rounded text-xs font-mono" {...props} />
+                            : <code className="block bg-muted-foreground/20 p-1.5 rounded text-xs font-mono overflow-x-auto" {...props} />
                         },
-                        blockquote: (props) => <blockquote className="border-l-4 border-primary pl-3 italic my-2" {...props} />,
-                        table: (props) => <table className="min-w-full border-collapse border border-border my-2" {...props} />,
-                        th: (props) => <th className="border border-border px-3 py-1.5 font-semibold text-left" {...props} />,
-                        td: (props) => <td className="border border-border px-3 py-1.5" {...props} />,
+                        blockquote: (props) => <blockquote className="border-l-4 border-primary pl-2 italic my-1.5 text-sm" {...props} />,
+                        table: (props) => <table className="min-w-full border-collapse border border-border my-1.5 text-xs" {...props} />,
+                        th: (props) => <th className="border border-border px-2 py-1 font-semibold text-left" {...props} />,
+                        td: (props) => <td className="border border-border px-2 py-1" {...props} />,
                         a: (props) => <a className="text-primary underline hover:opacity-80" {...props} />,
                         strong: (props) => <strong className="font-semibold" {...props} />,
                         em: (props) => <em className="italic" {...props} />,
-                        hr: (props) => <hr className="border-border my-3" {...props} />,
-                        img: (props) => <img className="max-w-full h-auto rounded my-2" {...props} />,
+                        hr: (props) => <hr className="border-border my-2" {...props} />,
+                        img: (props) => <img className="max-w-full h-auto rounded my-1.5" {...props} />,
                       } as Components
                     }
                   >
@@ -455,24 +454,24 @@ ${html}
               </div>
             ) : llmData?.error ? (
               /* Error state */
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-destructive">{t("llm_ocr.failed")}</h3>
-                <p className="text-sm text-muted-foreground">{llmData.error}</p>
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-destructive">{t("llm_ocr.failed")}</h3>
+                <p className="text-xs text-muted-foreground">{llmData.error}</p>
                 <button
                   onClick={handleRecognize}
-                  className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                  className="flex items-center justify-center gap-2 w-full px-3 py-2 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90"
                 >
-                  <Wand2 className="h-4 w-4" />
+                  <Wand2 className="h-3.5 w-3.5" />
                   {t("llm_ocr.recognizeButton")}
                 </button>
               </div>
             ) : (
               /* No LLM recognition yet */
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">{t("llm_ocr.title")}</h3>
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold">{t("llm_ocr.title")}</h3>
 
                 {/* Basic info */}
-                <div className="space-y-2 text-sm">
+                <div className="space-y-1.5 text-xs">
                   {imagePath && (
                     <div>
                       <span className="text-muted-foreground">{t("llm_ocr.filePath")}:</span>
@@ -503,9 +502,9 @@ ${html}
                 {/* Recognize button */}
                 <button
                   onClick={handleRecognize}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
                 >
-                  <Wand2 className="h-5 w-5" />
+                  <Wand2 className="h-3.5 w-3.5" />
                   {t("llm_ocr.recognizeButton")}
                 </button>
 
@@ -514,6 +513,7 @@ ${html}
                 </p>
               </div>
             )}
+            </div>
           </div>
         </div>
       </DialogContent>
