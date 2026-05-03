@@ -396,6 +396,8 @@ export interface OcrDataResponse {
   imagePath: string
   angle: number
   scaleFactor: number
+  boundingBoxWidth: number
+  boundingBoxHeight: number
   boxes: OcrBoundingBoxDTO[]
 }
 

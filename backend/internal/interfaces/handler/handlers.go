@@ -1475,10 +1475,12 @@ func (s *Server) handleGetOcrData(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, dto.OcrDataResponse{
-		ImagePath:   imagePath,
-		Angle:       classification.Angle,
-		ScaleFactor: classification.ScaleFactor,
-		Boxes:       boxDTOs,
+		ImagePath:         imagePath,
+		Angle:             classification.Angle,
+		ScaleFactor:       classification.ScaleFactor,
+		BoundingBoxWidth:  classification.BoundingBoxWidth,
+		BoundingBoxHeight: classification.BoundingBoxHeight,
+		Boxes:             boxDTOs,
 	})
 }
 

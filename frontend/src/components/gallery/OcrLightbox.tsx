@@ -24,7 +24,6 @@ export function OcrLightbox({ imagePath, onClose }: OcrLightboxProps) {
   const [loading, setLoading] = useState(false)
   const [recognizing, setRecognizing] = useState(false)
   const [imageLoaded, setImageLoaded] = useState(false)
-  const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null)
   const [displayDimensions, setDisplayDimensions] = useState<{ width: number; height: number } | null>(null)
   const imageRef = useRef<HTMLImageElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -34,7 +33,6 @@ export function OcrLightbox({ imagePath, onClose }: OcrLightboxProps) {
     setOcrData(null)
     setLlmData(null)
     setImageLoaded(false)
-    setImageDimensions(null)
     setDisplayDimensions(null)
     setLoading(false)
     prevImagePath.current = null
@@ -179,8 +177,7 @@ export function OcrLightbox({ imagePath, onClose }: OcrLightboxProps) {
   // Calculate display dimensions when image loads
   const handleImageLoad = useCallback(() => {
     if (imageRef.current) {
-      const { naturalWidth, naturalHeight, clientWidth, clientHeight } = imageRef.current
-      setImageDimensions({ width: naturalWidth, height: naturalHeight })
+      const { clientWidth, clientHeight } = imageRef.current
       setDisplayDimensions({ width: clientWidth, height: clientHeight })
       setImageLoaded(true)
     }
@@ -205,8 +202,8 @@ export function OcrLightbox({ imagePath, onClose }: OcrLightboxProps) {
   }, [imageLoaded])
 
   // Calculate scale factor for bounding boxes
-  const scaleX = imageDimensions && displayDimensions ? displayDimensions.width / imageDimensions.width : 1
-  const scaleY = imageDimensions && displayDimensions ? displayDimensions.height / imageDimensions.height : 1
+  const scaleX = ocrData && displayDimensions && ocrData.boundingBoxWidth ? displayDimensions.width / ocrData.boundingBoxWidth : 1
+  const scaleY = ocrData && displayDimensions && ocrData.boundingBoxHeight ? displayDimensions.height / ocrData.boundingBoxHeight : 1
 
   const angle = ocrData?.angle || 0
   const ocrScaleFactor = ocrData?.scaleFactor || 1
