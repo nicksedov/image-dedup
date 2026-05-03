@@ -19,13 +19,12 @@ type DuplicatesResponse struct {
 
 // DuplicateGroupDTO represents a duplicate group in JSON responses
 type DuplicateGroupDTO struct {
-	Index              int       `json:"index"`
-	Hash               string    `json:"hash"`
-	Size               int64     `json:"size"`
-	SizeHuman          string    `json:"sizeHuman"`
-	Files              []FileDTO `json:"files"`
-	Thumbnail          string    `json:"thumbnail"`
-	ThumbnailCachePath string    `json:"thumbnailCachePath,omitempty"`
+	Index     int       `json:"index"`
+	Hash      string    `json:"hash"`
+	Size      int64     `json:"size"`
+	SizeHuman string    `json:"sizeHuman"`
+	Files     []FileDTO `json:"files"`
+	Thumbnail string    `json:"thumbnail"`
 }
 
 // FileDTO represents a file in JSON responses
@@ -181,15 +180,14 @@ type RemoveFolderResponse struct {
 
 // GalleryImageDTO represents an image in the gallery browser
 type GalleryImageDTO struct {
-	ID                 uint   `json:"id"`
-	Path               string `json:"path"`
-	FileName           string `json:"fileName"`
-	DirPath            string `json:"dirPath"`
-	Size               int64  `json:"size"`
-	SizeHuman          string `json:"sizeHuman"`
-	ModTime            string `json:"modTime"`
-	Thumbnail          string `json:"thumbnail,omitempty"`
-	ThumbnailCachePath string `json:"thumbnailCachePath,omitempty"`
+	ID        uint   `json:"id"`
+	Path      string `json:"path"`
+	FileName  string `json:"fileName"`
+	DirPath   string `json:"dirPath"`
+	Size      int64  `json:"size"`
+	SizeHuman string `json:"sizeHuman"`
+	ModTime   string `json:"modTime"`
+	Thumbnail string `json:"thumbnail,omitempty"`
 }
 
 // GalleryImagesResponse is the JSON response for GET /api/gallery

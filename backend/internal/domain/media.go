@@ -8,14 +8,13 @@ import (
 
 // ImageFile represents an image file in the database
 type ImageFile struct {
-	ID                uint      `gorm:"primaryKey" json:"id"`
-	Path              string    `gorm:"uniqueIndex;not null" json:"path"`
-	Size              int64     `gorm:"not null;index:idx_size_hash" json:"size"`
-	Hash              string    `gorm:"not null;index:idx_size_hash" json:"hash"`
-	ModTime           time.Time `gorm:"not null" json:"modTime"`
-	ThumbnailCachePath string   `gorm:"default:''" json:"thumbnailCachePath"`
-	CreatedAt         time.Time `json:"createdAt"`
-	UpdatedAt         time.Time `json:"updatedAt"`
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Path      string    `gorm:"uniqueIndex;not null" json:"path"`
+	Size      int64     `gorm:"not null;index:idx_size_hash" json:"size"`
+	Hash      string    `gorm:"not null;index:idx_size_hash" json:"hash"`
+	ModTime   time.Time `gorm:"not null" json:"modTime"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // DuplicateGroup represents a group of duplicate images

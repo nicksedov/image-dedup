@@ -110,9 +110,6 @@ func (s *Server) handleGetDuplicates(c *gin.Context) {
 
 				if err == nil {
 					groupDTOs[idx].Thumbnail = thumb
-					if s.thumbnailService != nil {
-						groupDTOs[idx].ThumbnailCachePath = s.thumbnailService.GenerateThumbnailPath(filePath)
-					}
 				}
 			}(i, g.Files[0].Path)
 		}
@@ -588,9 +585,6 @@ func (s *Server) handleGetGalleryImages(c *gin.Context) {
 
 				if err == nil {
 					imageDTOs[idx].Thumbnail = thumb
-					if s.thumbnailService != nil {
-						imageDTOs[idx].ThumbnailCachePath = s.thumbnailService.GetThumbnailPath(filePath)
-					}
 				}
 			}(i, f.Path)
 		}
