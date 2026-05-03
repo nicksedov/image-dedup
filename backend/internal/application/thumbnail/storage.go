@@ -68,7 +68,7 @@ func NewThumbnailCacheStorage(cacheDir string) (*ThumbnailCacheStorage, error) {
 	if cacheDir == "" {
 		return nil, &ErrInvalidCachePath{Path: cacheDir}
 	}
-	
+
 	// Если путь не абсолютный, делаем его абсолютным
 	if !filepath.IsAbs(cacheDir) {
 		absPath, err := filepath.Abs(cacheDir)
@@ -77,17 +77,17 @@ func NewThumbnailCacheStorage(cacheDir string) (*ThumbnailCacheStorage, error) {
 		}
 		cacheDir = absPath
 	}
-	
+
 	storage := &ThumbnailCacheStorage{
 		cacheDir: cacheDir,
 		enabled:  true,
 	}
-	
+
 	// Инициализируем структуру подпапок
 	if err := storage.initStructure(); err != nil {
 		return nil, &ErrCacheInitFailed{Path: cacheDir, Err: err}
 	}
-	
+
 	return storage, nil
 }
 
@@ -157,11 +157,11 @@ func (tcs *ThumbnailCacheStorage) Exists(filePath string) bool {
 	if !tcs.enabled {
 		return false
 	}
-	
+
 	path := CachePath(tcs.cacheDir, filePath)
 	tcs.mu.RLock()
 	defer tcs.mu.RUnlock()
-	
+
 	_, err := os.Stat(path)
 	return err == nil
 }
@@ -171,11 +171,11 @@ func (tcs *ThumbnailCacheStorage) Get(filePath string) string {
 	if !tcs.enabled {
 		return ""
 	}
-	
+
 	path := CachePath(tcs.cacheDir, filePath)
 	tcs.mu.RLock()
 	defer tcs.mu.RUnlock()
-	
+
 	if _, err := os.Stat(path); err != nil {
 		return ""
 	}
@@ -187,23 +187,23 @@ func (tcs *ThumbnailCacheStorage) Set(filePath string, thumbnailData []byte) err
 	if !tcs.enabled {
 		return ErrThumbnailCacheDisabled
 	}
-	
+
 	tcs.mu.Lock()
 	defer tcs.mu.Unlock()
-	
+
 	cachePath := CachePath(tcs.cacheDir, filePath)
-	
+
 	// Убедимся, что подпапка существует
 	dir := filepath.Dir(cachePath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return &ErrCacheWriteFailed{Path: filePath, Err: err}
 	}
-	
+
 	// Записываем файл миниатюры
 	if err := os.WriteFile(cachePath, thumbnailData, 0644); err != nil {
 		return &ErrCacheWriteFailed{Path: filePath, Err: err}
 	}
-	
+
 	return nil
 }
 
@@ -212,19 +212,19 @@ func (tcs *ThumbnailCacheStorage) Delete(filePath string) error {
 	if !tcs.enabled {
 		return nil
 	}
-	
+
 	tcs.mu.Lock()
 	defer tcs.mu.Unlock()
-	
+
 	cachePath := CachePath(tcs.cacheDir, filePath)
-	
+
 	if err := os.Remove(cachePath); err != nil {
 		if os.IsNotExist(err) {
 			return nil // Файл уже не существует
 		}
 		return &ErrCacheReadFailed{Path: filePath, Err: err}
 	}
-	
+
 	return nil
 }
 
@@ -232,7 +232,7 @@ func (tcs *ThumbnailCacheStorage) Delete(filePath string) error {
 func (tcs *ThumbnailCacheStorage) ClearAll() error {
 	tcs.mu.Lock()
 	defer tcs.mu.Unlock()
-	
+
 	// Удаляем всю структуру кэша
 	return os.RemoveAll(tcs.cacheDir)
 }
@@ -241,27 +241,27 @@ func (tcs *ThumbnailCacheStorage) ClearAll() error {
 func (tcs *ThumbnailCacheStorage) Stats() (int, int64, error) {
 	tcs.mu.RLock()
 	defer tcs.mu.RUnlock()
-	
+
 	var count int
 	var totalSize int64
-	
+
 	err := filepath.Walk(tcs.cacheDir, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			return nil // Продолжаем обход при ошибках
 		}
-		
+
 		if !info.IsDir() && strings.HasSuffix(info.Name(), "."+ThumbnailFormat) {
 			count++
 			totalSize += info.Size()
 		}
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		return 0, 0, &ErrCacheReadFailed{Path: tcs.cacheDir, Err: err}
 	}
-	
+
 	return count, totalSize, nil
 }
 
@@ -295,27 +295,27 @@ func (tcs *ThumbnailCacheStorage) ListFiles() ([]string, error) {
 func (tcs *ThumbnailCacheStorage) PruneExpired(imagePaths map[string]bool) error {
 	tcs.mu.Lock()
 	defer tcs.mu.Unlock()
-	
+
 	// Проходим по всем файлам в кэше
 	err := filepath.Walk(tcs.cacheDir, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			return nil
 		}
-		
+
 		if info.IsDir() {
 			return nil
 		}
-		
+
 		if !strings.HasSuffix(info.Name(), "."+ThumbnailFormat) {
 			return nil
 		}
-		
+
 		// Извлекаем путь к изображению из метаданных или удаляем устаревшую миниатюру
 		// Для простоты удаляем миниатюры, если оригинальный файл не найден
 		// В реальном приложении можно хранить обратное отображение в базе
-		
+
 		return nil
 	})
-	
+
 	return err
 }
