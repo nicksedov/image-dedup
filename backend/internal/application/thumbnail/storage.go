@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	// ThumbnailCacheSubdirs количество подпапок для равномерного распределения файлов
-	ThumbnailCacheSubdirs = 128
+	// ThumbnailCacheSubdirs количество подпапок для равномерного распределения файлов (одноуровневая структура)
+	ThumbnailCacheSubdirs = 256
 	// ThumbnailFormat формат сохраняемых миниатюр
 	ThumbnailFormat = "webp"
 	// ThumbnailQuality качество сжатия миниатюр (0-100)
@@ -29,34 +29,31 @@ func CacheKey(filePath string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-// CachePath вычисляет абсолютный путь к файлу миниатюры в иерархической структуре кэша
+// CachePath вычисляет абсолютный путь к файлу миниатюры в структуре кэша с одним уровнем подпапок
 func CachePath(cacheDir, filePath string) string {
 	cacheKey := CacheKey(filePath)
-	subdir1 := cacheKey[:2]
-	subdir2 := cacheKey[2:4]
+	subdir := cacheKey[:2] // Первые 2 символа хеша (00-ff = 256 вариантов)
 	fileName := cacheKey + "." + ThumbnailFormat
 
-	return filepath.Join(cacheDir, subdir1, subdir2, fileName)
+	return filepath.Join(cacheDir, subdir, fileName)
 }
 
 // CachePathRelative вычисляет относительный путь к файлу миниатюры (относительно корня кэша)
 func CachePathRelative(filePath string) string {
 	cacheKey := CacheKey(filePath)
-	subdir1 := cacheKey[:2]
-	subdir2 := cacheKey[2:4]
+	subdir := cacheKey[:2]
 	fileName := cacheKey + "." + ThumbnailFormat
 
 	// Возвращаем относительный путь без префикса кэш-директории
-	return filepath.Join(subdir1, subdir2, fileName)
+	return filepath.Join(subdir, fileName)
 }
 
 // CacheDirPath вычисляет путь к подпапке кэша для хеша
 func CacheDirPath(cacheDir, filePath string) string {
 	cacheKey := CacheKey(filePath)
-	subdir1 := cacheKey[:2]
-	subdir2 := cacheKey[2:4]
+	subdir := cacheKey[:2]
 
-	return filepath.Join(cacheDir, subdir1, subdir2)
+	return filepath.Join(cacheDir, subdir)
 }
 
 // ThumbnailCacheStorage управляет иерархическим кэшем миниатюр на файловой системе
@@ -94,38 +91,27 @@ func NewThumbnailCacheStorage(cacheDir string) (*ThumbnailCacheStorage, error) {
 	return storage, nil
 }
 
-// initStructure создает иерархическую структуру из 128 подпапок
+// initStructure создает одноуровневую структуру из 256 подпапок
 func (tcs *ThumbnailCacheStorage) initStructure() error {
 	tcs.mu.Lock()
 	defer tcs.mu.Unlock()
-	
-	// Создаем主 подпапку кэша
+
+	// Создаем главную подпапку кэша
 	if err := os.MkdirAll(tcs.cacheDir, 0755); err != nil {
 		return fmt.Errorf("failed to create cache directory: %w", err)
 	}
-	
-	// Создаем 128 подпапок для равномерного распределения
-	// Формат: 00, 01, 02, ..., 7f (hexadecimal)
+
+	// Создаем 256 подпапок для равномерного распределения
+	// Формат: 00, 01, 02, ..., ff (hexadecimal)
 	for i := 0; i < ThumbnailCacheSubdirs; i++ {
 		subdirName := fmt.Sprintf("%02x", i)
 		subdirPath := filepath.Join(tcs.cacheDir, subdirName)
-		
-		// Создаем подпапку
+
 		if err := os.MkdirAll(subdirPath, 0755); err != nil {
 			return fmt.Errorf("failed to create subdirectory %s: %w", subdirPath, err)
 		}
-		
-		// Создаем подпапки второго уровня для каждой из 128 первых подпапок
-		for j := 0; j < ThumbnailCacheSubdirs; j++ {
-			subdir2Name := fmt.Sprintf("%02x", j)
-			subdir2Path := filepath.Join(subdirPath, subdir2Name)
-			
-			if err := os.MkdirAll(subdir2Path, 0755); err != nil {
-				return fmt.Errorf("failed to create subdirectory %s: %w", subdir2Path, err)
-			}
-		}
 	}
-	
+
 	return nil
 }
 
