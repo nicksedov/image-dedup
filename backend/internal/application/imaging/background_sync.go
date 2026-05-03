@@ -28,7 +28,7 @@ type BackgroundSyncManager struct {
 func NewBackgroundSyncManager(db *gorm.DB, thumbnailService *thumbnail.Service, syncIntervalMinutes int) *BackgroundSyncManager {
 	interval := time.Duration(syncIntervalMinutes) * time.Minute
 	if interval <= 0 {
-		interval = 30 * time.Minute // Default: 30 minutes
+		interval = 12 * 60 * time.Minute // Default: 30 minutes
 	}
 
 	return &BackgroundSyncManager{
