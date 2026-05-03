@@ -18,7 +18,7 @@
   --color-light-purple-border: hsl(270 50% 80%);
   --color-light-purple-input: hsl(270 50% 80%);
   --color-light-purple-ring: hsl(270 80% 60%);
-  --color-light-purple-card: hsl(270 100% 98%);
+  --color-light-purple-card: hsl(270 100% 95%);
   --color-light-purple-card-foreground: hsl(270 80% 20%);
   --color-light-purple-popover: hsl(270 100% 98%);
   --color-light-purple-popover-foreground: hsl(270 80% 20%);
@@ -40,7 +40,7 @@
   --color-dark-purple-border: hsl(270 30% 25%);
   --color-dark-purple-input: hsl(270 30% 25%);
   --color-dark-purple-ring: hsl(270 70% 65%);
-  --color-dark-purple-card: hsl(270 20% 12%);
+  --color-dark-purple-card: hsl(270 25% 15%);
   --color-dark-purple-card-foreground: hsl(270 60% 85%);
   --color-dark-purple-popover: hsl(270 20% 12%);
   --color-dark-purple-popover-foreground: hsl(270 60% 85%);
@@ -62,7 +62,7 @@
   --color-light-green-border: hsl(150 55% 78%);
   --color-light-green-input: hsl(150 55% 78%);
   --color-light-green-ring: hsl(150 75% 40%);
-  --color-light-green-card: hsl(150 100% 97%);
+  --color-light-green-card: hsl(150 100% 94%);
   --color-light-green-card-foreground: hsl(150 75% 20%);
   --color-light-green-popover: hsl(150 100% 97%);
   --color-light-green-popover-foreground: hsl(150 75% 20%);
@@ -84,7 +84,7 @@
   --color-dark-green-border: hsl(150 30% 20%);
   --color-dark-green-input: hsl(150 30% 20%);
   --color-dark-green-ring: hsl(150 65% 45%);
-  --color-dark-green-card: hsl(150 20% 10%);
+  --color-dark-green-card: hsl(150 25% 13%);
   --color-dark-green-card-foreground: hsl(150 60% 85%);
   --color-dark-green-popover: hsl(150 20% 10%);
   --color-dark-green-popover-foreground: hsl(150 60% 85%);
@@ -106,7 +106,7 @@
   --color-light-blue-border: hsl(210 60% 78%);
   --color-light-blue-input: hsl(210 60% 78%);
   --color-light-blue-ring: hsl(210 85% 50%);
-  --color-light-blue-card: hsl(210 100% 97%);
+  --color-light-blue-card: hsl(210 100% 94%);
   --color-light-blue-card-foreground: hsl(210 85% 20%);
   --color-light-blue-popover: hsl(210 100% 97%);
   --color-light-blue-popover-foreground: hsl(210 85% 20%);
@@ -128,7 +128,7 @@
   --color-dark-blue-border: hsl(210 30% 25%);
   --color-dark-blue-input: hsl(210 30% 25%);
   --color-dark-blue-ring: hsl(210 75% 55%);
-  --color-dark-blue-card: hsl(210 20% 12%);
+  --color-dark-blue-card: hsl(210 25% 15%);
   --color-dark-blue-card-foreground: hsl(210 60% 85%);
   --color-dark-blue-popover: hsl(210 20% 12%);
   --color-dark-blue-popover-foreground: hsl(210 60% 85%);
@@ -150,7 +150,7 @@
   --color-light-orange-border: hsl(30 60% 78%);
   --color-light-orange-input: hsl(30 60% 78%);
   --color-light-orange-ring: hsl(30 85% 55%);
-  --color-light-orange-card: hsl(30 100% 97%);
+  --color-light-orange-card: hsl(30 100% 94%);
   --color-light-orange-card-foreground: hsl(30 85% 20%);
   --color-light-orange-popover: hsl(30 100% 97%);
   --color-light-orange-popover-foreground: hsl(30 85% 20%);
@@ -172,7 +172,7 @@
   --color-dark-orange-border: hsl(30 30% 25%);
   --color-dark-orange-input: hsl(30 30% 25%);
   --color-dark-orange-ring: hsl(30 75% 60%);
-  --color-dark-orange-card: hsl(30 20% 12%);
+  --color-dark-orange-card: hsl(30 25% 15%);
   --color-dark-orange-card-foreground: hsl(30 60% 85%);
   --color-dark-orange-popover: hsl(30 20% 12%);
   --color-dark-orange-popover-foreground: hsl(30 60% 85%);
@@ -194,7 +194,7 @@
   --color-dark-contrast-border: hsl(0 0% 20%);
   --color-dark-contrast-input: hsl(0 0% 20%);
   --color-dark-contrast-ring: hsl(200 100% 60%);
-  --color-dark-contrast-card: hsl(0 0% 8%);
+  --color-dark-contrast-card: hsl(0 0% 12%);
   --color-dark-contrast-card-foreground: hsl(0 0% 95%);
   --color-dark-contrast-popover: hsl(0 0% 8%);
   --color-dark-contrast-popover-foreground: hsl(0 0% 95%);
