@@ -792,9 +792,14 @@ func (s *Server) handleUpdateSettings(c *gin.Context) {
 
 			// Update thumbnail service if available
 			if s.thumbnailService != nil {
+				log.Printf("Updating thumbnail cache path from %s to %s", s.thumbnailService.Stats().CacheDir, normalizedCache)
 				if err := s.thumbnailService.UpdateCachePath(normalizedCache); err != nil {
 					log.Printf("Failed to update thumbnail cache path: %v", err)
+				} else {
+					log.Printf("Thumbnail cache path updated successfully. New stats: %+v", s.thumbnailService.Stats())
 				}
+			} else {
+				log.Printf("Thumbnail service is nil, cannot update cache path")
 			}
 		} else {
 			settings.ThumbnailCachePath = ""
@@ -1849,11 +1854,13 @@ func (s *Server) handleGetLlmModels(c *gin.Context) {
 // handleThumbnailCacheStats возвращает статистику кэша миниатюр
 func (s *Server) handleThumbnailCacheStats(c *gin.Context) {
 	if s.thumbnailService == nil {
+		log.Printf("Thumbnail stats requested: service is nil")
 		c.JSON(http.StatusOK, thumbnail.ThumbnailStats{})
 		return
 	}
 
 	stats := s.thumbnailService.Stats()
+	log.Printf("Thumbnail stats: %+v", stats)
 	c.JSON(http.StatusOK, stats)
 }
 

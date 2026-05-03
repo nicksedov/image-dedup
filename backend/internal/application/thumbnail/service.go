@@ -6,6 +6,7 @@ import (
 	"image"
 	"image/jpeg"
 	"image/png"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -354,9 +355,11 @@ func (s *Service) Stats() ThumbnailStats {
 	defer s.mu.RUnlock()
 
 	if !s.initialized {
+		log.Printf("Stats: service not initialized")
 		return ThumbnailStats{}
 	}
 
+	log.Printf("Stats: returning %+v", s.stats)
 	return s.stats
 }
 
@@ -370,21 +373,26 @@ func (s *Service) UpdateCachePath(newPath string) error {
 	defer s.mu.Unlock()
 
 	oldPath := s.cfg.CacheDir
+	log.Printf("UpdateCachePath: old=%s, new=%s", oldPath, newPath)
 
 	// Если путь не изменился, просто обновляем статистику
 	if oldPath == newPath {
+		log.Printf("UpdateCachePath: paths are the same, updating stats only")
 		s.updateStats()
+		log.Printf("UpdateCachePath: stats after update: %+v", s.stats)
 		return nil
 	}
 
 	// Перемещаем файлы из старого хранилища в новое
 	if err := s.moveCacheTo(newPath); err != nil {
+		log.Printf("UpdateCachePath: moveCacheTo failed: %v", err)
 		return err
 	}
 
 	// Создаем новое хранилище и заменяем старое
 	newStorage, err := NewThumbnailCacheStorage(newPath)
 	if err != nil {
+		log.Printf("UpdateCachePath: NewThumbnailCacheStorage failed: %v", err)
 		return &ErrCacheInitFailed{Path: newPath, Err: err}
 	}
 
@@ -394,6 +402,7 @@ func (s *Service) UpdateCachePath(newPath string) error {
 	s.initialized = true
 
 	s.updateStats()
+	log.Printf("UpdateCachePath: success, stats: %+v", s.stats)
 	return nil
 }
 
