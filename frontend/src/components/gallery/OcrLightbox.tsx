@@ -206,8 +206,9 @@ export function OcrLightbox({ imagePath, onClose }: OcrLightboxProps) {
   const scaleY = ocrData && displayDimensions && ocrData.boundingBoxHeight ? displayDimensions.height / ocrData.boundingBoxHeight : 1
 
   const angle = ocrData?.angle || 0
+  const ocrScaleFactor = ocrData?.scaleFactor || 1
   const imageUrl = imagePath
-    ? `${API_BASE_URL}/api/image?path=${encodeURIComponent(imagePath)}`
+    ? `${API_BASE_URL}/api/ocr-image?path=${encodeURIComponent(imagePath)}&angle=${angle}&scaleFactor=${ocrScaleFactor}`
     : ""
 
   // Format processing time
@@ -314,9 +315,6 @@ ${html}
                   src={imageUrl}
                   alt={t("lightbox.alt")}
                   className="max-w-full max-h-[75vh] object-contain"
-                  style={{
-                    transform: angle !== 0 ? `rotate(${angle}deg)` : undefined,
-                  }}
                   onLoad={handleImageLoad}
                 />
               )}
