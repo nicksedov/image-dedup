@@ -114,11 +114,11 @@ type ThumbnailResponse struct {
 
 // ThumbnailCacheStatsResponse статистика кэша миниатюр
 type ThumbnailCacheStatsResponse struct {
-	TotalSize    int64  `json:"totalSize"`
-	TotalFiles   int    `json:"totalFiles"`
-	CacheDir     string `json:"cacheDir"`
-	Enabled      bool   `json:"enabled"`
-	Initialized  bool   `json:"initialized"`
+	TotalSize   int64  `json:"totalSize"`
+	TotalFiles  int    `json:"totalFiles"`
+	CacheDir    string `json:"cacheDir"`
+	Enabled     bool   `json:"enabled"`
+	Initialized bool   `json:"initialized"`
 }
 
 // InvalidateThumbnailRequest запрос на удаление миниатюры
@@ -133,10 +133,10 @@ type WarmupThumbnailsRequest struct {
 
 // ThumbnailCacheStatusResponse статус кэша миниатюр
 type ThumbnailCacheStatusResponse struct {
-	Enabled     bool   `json:"enabled"`
-	CacheDir    string `json:"cacheDir"`
-	FilesCount  int    `json:"filesCount"`
-	TotalSize   int64  `json:"totalSize"`
+	Enabled        bool   `json:"enabled"`
+	CacheDir       string `json:"cacheDir"`
+	FilesCount     int    `json:"filesCount"`
+	TotalSize      int64  `json:"totalSize"`
 	TotalSizeHuman string `json:"totalSizeHuman"`
 }
 
