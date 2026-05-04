@@ -10,7 +10,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -195,9 +194,10 @@ func (s *Service) GetOrGenerate(filePath string) (string, error) {
 // encodeToDataURL кодирует бинарные данные в data URL с правильным MIME типом
 func (s *Service) encodeToDataURL(data []byte) string {
 	mimeType := "image/webp"
-	if s.cfg.Format == "jpeg" {
+	switch s.cfg.Format {
+	case "jpeg":
 		mimeType = "image/jpeg"
-	} else if s.cfg.Format == "png" {
+	case "png":
 		mimeType = "image/png"
 	}
 	return "data:" + mimeType + ";base64," + base64.StdEncoding.EncodeToString(data)
@@ -240,18 +240,19 @@ func (s *Service) generateThumbnail(filePath string) ([]byte, error) {
 	thumbnail := imaging.Resize(img, newWidth, newHeight, imaging.Lanczos)
 
 	var buf bytes.Buffer
-	if s.cfg.Format == "webp" || s.cfg.Format == "" {
+	switch s.cfg.Format {
+	case "webp":
 		if err := webp.Encode(&buf, thumbnail, &webp.Options{Quality: float32(s.cfg.Quality)}); err != nil {
 			buf.Reset()
 			if err := jpeg.Encode(&buf, thumbnail, &jpeg.Options{Quality: s.cfg.Quality}); err != nil {
 				return nil, fmt.Errorf("failed to encode thumbnail: %w", err)
 			}
 		}
-	} else if s.cfg.Format == "jpeg" {
+	case "jpeg":
 		if err := jpeg.Encode(&buf, thumbnail, &jpeg.Options{Quality: s.cfg.Quality}); err != nil {
 			return nil, fmt.Errorf("failed to encode thumbnail: %w", err)
 		}
-	} else if s.cfg.Format == "png" {
+	case "png":
 		if err := png.Encode(&buf, thumbnail); err != nil {
 			return nil, fmt.Errorf("failed to encode thumbnail: %w", err)
 		}
@@ -364,13 +365,16 @@ func (s *Service) updateStats() {
 
 // Stats возвращает текущую статистику кэша
 func (s *Service) Stats() ThumbnailStats {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	if !s.initialized {
 		log.Printf("Stats: service not initialized")
 		return ThumbnailStats{}
 	}
+
+	// Always refresh from disk to ensure accuracy
+	s.updateStats()
 
 	log.Printf("Stats: returning %+v", s.stats)
 	return s.stats
@@ -488,35 +492,6 @@ func (s *Service) cleanupEmptyDirs(dir string) {
 
 		return nil
 	})
-}
-
-// copyCacheTo устаревший метод - сохранен для совместимости
-func (s *Service) copyCacheTo(newStorage *ThumbnailCacheStorage) error {
-	// Проходим по всем файлам и копируем их
-	err := filepath.Walk(s.cfg.CacheDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return nil
-		}
-
-		if info.IsDir() {
-			return nil
-		}
-
-		// Извлекаем имя файла
-		filename := filepath.Base(path)
-		if !strings.HasSuffix(filename, "."+ThumbnailFormat) {
-			return nil
-		}
-
-		// Получаем исходный путь к изображению из обратного отображения
-		// Для простоты - просто пытаемся восстановить из хеша
-		// В реальном приложении нужно хранить отображение hash -> originalPath
-
-		// Временное решение: пропускаем копирование при смене пути
-		return nil
-	})
-
-	return err
 }
 
 // Enable включает кэш

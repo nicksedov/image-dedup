@@ -24,8 +24,10 @@ const (
 
 // CacheKey генерирует ключ кэша на основе пути к файлу
 func CacheKey(filePath string) string {
+	// Нормализуем путь: заменяем обратные слеши на прямые для консистентности
+	normalizedPath := filepath.ToSlash(filePath)
 	// MD5 хеш пути для получения фиксированной длины
-	hash := md5.Sum([]byte(filePath))
+	hash := md5.Sum([]byte(normalizedPath))
 	return hex.EncodeToString(hash[:])
 }
 
